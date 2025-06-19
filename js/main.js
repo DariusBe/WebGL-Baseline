@@ -7,7 +7,7 @@ import { MultiPassShader } from "./src/blurShader/MultiPassShader.js";
 import "../gl-matrix-min.js";
 
 /* Globals */
-const glContext = new GLContext();
+const glContext = GLContext.getInstance();
 const gl = glContext.gl;
 glContext.listContextStats();
 const shaderList = glContext.shaderList;

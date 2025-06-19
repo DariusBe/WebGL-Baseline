@@ -2,7 +2,21 @@ import { Utils } from "./Utils.js";
 // use whole of gl-matrix from gl-matrix-min.js
 import "../../gl-matrix-min.js";
 
+/**
+ * GLContext singleton class to manage WebGL2 context, shaders, and global uniforms
+
+ */
 export class GLContext {
+  // Singleton instance of GLContext
+  static instance = null;
+
+  static getInstance(context = "webgl-canvas") {
+    if (!GLContext.instance) {
+      GLContext.instance = new GLContext(context);
+    }
+    return GLContext.instance;
+  }
+
   /* MEMBERS */
   gl;
   shaderList = [];
