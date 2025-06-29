@@ -1,6 +1,10 @@
 import { Utils } from "./Utils.js";
+import { GLContext } from "./GLContext.js";
+import { Attribute } from "./Attribute.js";
+import { Uniform } from "./Uniform.js";
 
-export class Shader {
+export class LegacyShader {
+  glContext = GLContext.getInstance();
   gl;
   name;
   program;
@@ -12,9 +16,9 @@ export class Shader {
   tfVao = null;
   tfBufferSize = 0;
   tfBuffer;
-  attributeList = {};
+  attributeList = [];
   AttributesPoolBuffer = null;
-  uniformList = {};
+  uniformList = [];
   uniformBlockIndex = "GlobalUniforms";
 
   /**
@@ -29,7 +33,6 @@ export class Shader {
    * @param {boolean} verbose If true, the console will output detailed information about uniforms, attributes and transform feedback
    */
   constructor(
-    gl,
     name = "",
     vertexShaderCode,
     fragmentShaderCode,
@@ -41,10 +44,9 @@ export class Shader {
     if (verbose) {
       console.groupCollapsed(name);
     }
-    this.gl = gl;
+    this.gl = this.glContext.gl;
     this.name = name;
     this.program = this.prepareShaderProgram(
-      gl,
       vertexShaderCode,
       fragmentShaderCode,
       tf_description !== null ? tf_description : null,
@@ -84,12 +86,12 @@ export class Shader {
    * @throws {Error} If the shader program cannot be created
    */
   prepareShaderProgram(
-    gl,
     vertexShaderCode,
     fragmentShaderCode,
     tf_description,
     verbose = false
   ) {
+    const gl = this.gl;
     this.vertexShader = gl.createShader(gl.VERTEX_SHADER);
     this.vertexShader.name = this.name + "VertShader";
     gl.shaderSource(this.vertexShader, vertexShaderCode);
@@ -173,6 +175,49 @@ export class Shader {
     var usedUniforms = [];
     var unusedUniforms = [];
     if (uniforms === null || uniforms === undefined) return;
+    if (Array.isArray(uniforms)) {
+      for (const uniform of uniforms) {
+        const uniformLocation = gl.getUniformLocation(program, uniform.name);
+        if (uniformLocation === null) {
+          unusedUniforms.push([uniform.name, [uniform.type, uniform.value]]);
+          continue;
+        } else {
+          usedUniforms.push([uniform.name, [uniform.type, uniform.value]]);
+        }
+        if (uniform.type === "bool") {
+          gl.uniform1i(uniformLocation, uniform.value);
+        } else if (uniform.type === "1f") {
+          gl.uniform1f(uniformLocation, uniform.value);
+        } else if (uniform.type === "1fv") {
+          gl.uniform1fv(uniformLocation, uniform.value);
+        } else if (uniform.type === "2fv") {
+          gl.uniform2fv(uniformLocation, uniform.value);
+        } else if (uniform.type === "3fv") {
+          gl.uniform3fv(uniformLocation, uniform.value);
+        } else if (uniform.type === "4fv") {
+          gl.uniform4fv(uniformLocation, uniform.value);
+        } else if (uniform.type === "1i") {
+          gl.uniform1i(uniformLocation, uniform.value);
+        } else if (uniform.type === "1iv") {
+          gl.uniform1iv(uniformLocation, uniform.value);
+        } else if (uniform.type === "2iv") {
+          gl.uniform2iv(uniformLocation, uniform.value);
+        } else if (uniform.type === "3iv") {
+          gl.uniform3iv(uniformLocation, uniform.value);
+        } else if (uniform.type === "4iv") {
+          gl.uniform4iv(uniformLocation, uniform.value);
+        } else {
+          console.groupEnd();
+          console.error("Unknown uniform type:", uniform.type);
+        }
+        // add to uniform list
+        this.uniformList.push(uniform.name);
+      }
+      for (const unif of this.uniformList) {
+        console.log("Uniform:", unif);
+      }
+      return;
+    }
     for (var [uniformName, [type, value]] of Object.entries(uniforms)) {
       const uniformLocation = gl.getUniformLocation(program, uniformName);
       if (uniformLocation === null) {
@@ -277,6 +322,57 @@ export class Shader {
     this.AttributesPoolBuffer = gl.createBuffer();
     this.AttributesPoolBuffer.name = "AttributesPool_Buffer";
 
+    if (Array.isArray(attributes)) {
+      for (const attribute of attributes) {
+        const attributeLocation = gl.getAttribLocation(program, attribute.name);
+        if (attributeLocation === -1) {
+          console.groupEnd();
+          console.error(
+            `${this.name}: Error enabling Vertex Attribute ${attribute.name}`
+          );
+          notFoundAttributes.push(attribute);
+        } else if (attributeLocation !== attribute.location) {
+          console.groupEnd();
+          console.error(
+            `Attribute ${attribute.name} prepared for location ${attribute.location} but is located at ${attributeLocation}`
+          );
+        } else {
+          foundAttributes.push(attribute);
+        }
+
+        if (attribute.separate == true) {
+          const separateAttributeBuffer = gl.createBuffer();
+          separateAttributeBuffer.name = attribute.name + "_Buffer";
+          this.bufferList.push(separateAttributeBuffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER, separateAttributeBuffer);
+          if (verbose) {
+            console.info("Prepared separate buffer for", attribute.name + ".");
+          }
+        } else {
+          gl.bindBuffer(gl.ARRAY_BUFFER, this.AttributesPoolBuffer);
+          if (verbose) {
+            console.info("Added", attribute.name, "to pool buffer.");
+          }
+        }
+        gl.bufferData(gl.ARRAY_BUFFER, attribute.data, gl.DYNAMIC_DRAW);
+        gl.bufferSubData(gl.ARRAY_BUFFER, 0, attribute.data);
+        gl.enableVertexAttribArray(attributeLocation);
+        // // if failed, print error
+        // if (gl.getError() !== gl.NO_ERROR) {
+
+        // }
+        gl.vertexAttribPointer(
+          attributeLocation,
+          attribute.size,
+          gl[attribute.type],
+          attribute.normalized,
+          attribute.stride,
+          attribute.offset
+        );
+        this.attributeList.push(attribute);
+      }
+      return VAO;
+    }
     for (const [
       attributeName,
       [
@@ -310,7 +406,6 @@ export class Shader {
           attributeLocation
         );
       } else {
-        // console.info(this.name, '\nAttribute', attributeName, 'found');
         foundAttributes.push([
           attributeName,
           [location, [size, type, normalized, stride, offset], bufferData],
@@ -801,88 +896,6 @@ export class Shader {
     return view;
   }
 
-  /**
-   * Logs the details of the shader program, including VAO, FBOs, textures, buffers, attributes, and uniforms.
-   */
-  getShaderDetails() {
-    const gl = this.gl;
-    const program = this.program;
-    const vao = this.vao;
-
-    const listToArray = (list) => {
-      const arr = [];
-      for (const [key, value] of Object.entries(list)) {
-        arr.push("\n •");
-        arr.push(key + ":");
-        arr.push(value);
-      }
-      return arr;
-    };
-
-    const getFBOTextureName = (program, fbo) => {
-      if (fbo === null) {
-        return "none";
-      } else {
-        gl.useProgram(program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        const tex = gl.getFramebufferAttachmentParameter(
-          gl.FRAMEBUFFER,
-          gl.COLOR_ATTACHMENT0,
-          gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
-        );
-        return tex.name;
-      }
-    };
-
-    console.groupCollapsed("Shader Details:", this.name);
-    console.log(
-      "VAOs:",
-      ...this.vaoList.reduce((acc, vao) => {
-        acc.push("\n •", vao.name);
-        return acc;
-      }, [])
-    );
-    console.log(
-      "FBOs:",
-      this.fbo.length == 0 ? "none" : " ",
-      ...this.fbo.reduce((acc, fbo) => {
-        acc.push(
-          "\n •",
-          gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
-            ? "[COMPLETE]"
-            : "[INCOMPLETE]",
-          fbo.name,
-          "\n\t→ bound to",
-          getFBOTextureName(program, fbo)
-        );
-        return acc;
-      }, [])
-    );
-    // console.log('Textures:', ...this.textureList.reduce((acc, tex) => { acc.push('\n •', tex.name); return acc; }, []));
-    console.log("Textures:", ...listToArray(this.textureList));
-    console.log(
-      "Buffers:",
-      ...this.bufferList.reduce((acc, buff) => {
-        gl.bindBuffer(gl.ARRAY_BUFFER, buff);
-        const buffSize = gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        acc.push("\n •", buff.name + ":", buffSize, "Byte");
-        return acc;
-      }, [])
-    );
-    console.log(
-      "Attributes:",
-      "(" + gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) + " active)",
-      ...listToArray(this.attributeList)
-    );
-    console.log(
-      "Uniforms:",
-      "(" + gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) + " active)",
-      ...listToArray(this.uniformList)
-    );
-    console.groupEnd();
-  }
-
   /* SHADER UTILS: */
   /**
    * A function to log the values of a WebGLTexture to the console
@@ -930,7 +943,7 @@ export class Shader {
 
   /**
    * Render with Frame Buffer Object
-   * @param {Shader} shader The Shader with a framebuffer object
+   * @param {LegacyShader} shader The Shader with a framebuffer object
    * @param {WebGLTexture} inputTexture The texture to render into the framebuffer
    * @param {number | WebGLFramebuffer} fbo The framebuffer object to render into (default is 0)
    * @param {number} attachAtTextureUnit If the shader uses multiple textures, this parameter can be used to set the texture unit (default is null)
@@ -988,4 +1001,187 @@ export class Shader {
   saveTextureToImage = (texture, width, height) => {
     //
   };
+
+  /**
+   * Logs the shader program information, including VAOs, FBOs, textures, buffers, attributes, and uniforms.
+   * This is useful for debugging and understanding the shader program structure.
+   */
+  logShaderInfo() {
+    const gl = this.gl;
+    const program = this.program;
+
+    console.groupCollapsed("Shader Info:", this.name);
+
+    // VAOs
+    console.groupCollapsed("VAOs");
+    console.log(
+      ...this.vaoList.reduce((acc, vao) => {
+        acc.push("\n •", vao.name);
+        return acc;
+      }, [])
+    );
+    console.groupEnd();
+
+    // FBOs
+    console.groupCollapsed("FBOs");
+    const getFBOTextureName = (program, fbo) => {
+      if (fbo === null) {
+        return "none";
+      } else {
+        gl.useProgram(program);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        const tex = gl.getFramebufferAttachmentParameter(
+          gl.FRAMEBUFFER,
+          gl.COLOR_ATTACHMENT0,
+          gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
+        );
+        return tex.name;
+      }
+    };
+    console.log(
+      this.fbo.length == 0 ? "none" : " ",
+      ...this.fbo.reduce((acc, fbo) => {
+        acc.push(
+          "\n •",
+          gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
+            ? "[COMPLETE]"
+            : "[INCOMPLETE]",
+          fbo.name,
+          "\n\t→ bound to",
+          getFBOTextureName(program, fbo)
+        );
+        return acc;
+      }, [])
+    );
+    console.groupEnd();
+
+    // Textures
+    console.groupCollapsed("Textures");
+    console.log(
+      this.textureList.length == 0 ? "none" : " ",
+      ...Object.entries(this.textureList).reduce((acc, [name, [tex, unit]]) => {
+        acc.push(
+          "\n •",
+          name,
+          "\n\t",
+          "bound to unit",
+          unit,
+          "\n\t",
+          "size:",
+          tex.width,
+          "x",
+          tex.height,
+          "\n\t",
+          "type:",
+          tex.constructor.name,
+          "\n\t",
+          "texture object:",
+          tex.name + "\n"
+        );
+        return acc;
+      }, [])
+    );
+    console.groupEnd();
+
+    // Buffers
+    console.groupCollapsed("Buffers");
+    console.log(
+      ...this.bufferList.reduce((acc, buff) => {
+        gl.bindBuffer(gl.ARRAY_BUFFER, buff);
+        const buffSize = gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        acc.push("\n •", buff.name + ":", buffSize, "Byte");
+        return acc;
+      }, [])
+    );
+    console.groupEnd();
+
+    // Attributes
+    console.groupCollapsed("Attributes");
+    this.attributeList = [];
+    for (
+      let i = 0;
+      i < gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+      i++
+    ) {
+      const attribInfo = gl.getActiveAttrib(program, i);
+      const attribName = attribInfo.name;
+      const attribLocation = gl.getAttribLocation(program, attribName);
+      const attribSize = attribInfo.size;
+      this.attributeList.push({
+        name: attribName,
+        location: attribLocation,
+        size: attribSize,
+      });
+    }
+    console.log(
+      "(" + gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) + " active)",
+      ...this.attributeList.reduce((acc, attrib) => {
+        acc.push(
+          "\n •",
+          attrib.name,
+          "\n\t",
+          "location:",
+          attrib.location,
+          "\n\t",
+          "size:",
+          attrib.size,
+          "\n\t",
+          "buffer:",
+          attrib.name + "_Buffer" + "\n"
+        );
+        return acc;
+      }, [])
+    );
+    console.groupEnd();
+
+    // Uniforms
+    console.groupCollapsed("Uniforms");
+    console.log(
+      "(" + gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS) + " active)"
+    );
+    // print all active uniforms
+    this.uniformList = [];
+    for (
+      let i = 0;
+      i < gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+      i++
+    ) {
+      const uniformInfo = gl.getActiveUniform(program, i);
+      const uniformName = uniformInfo.name;
+      let uniformLocation = gl.getUniformLocation(program, uniformInfo.name);
+
+      if (uniformLocation === null) {
+        console.log("in UBO:", uniformName);
+        continue;
+      }
+      const uniformType = gl.getActiveUniform(program, i).type;
+      const uniformSize = gl.getActiveUniform(program, i).size;
+      this.uniformList.push({
+        name: uniformName,
+        location: uniformLocation,
+        type: uniformType,
+        size: uniformSize,
+      });
+      console.log(
+        "\n •",
+        uniformName,
+        "\n\t",
+        "location:",
+        uniformLocation,
+        "\n\t",
+        "type:",
+        uniformType,
+        "\n\t",
+        "size:",
+        uniformSize,
+        "\n\t",
+        "value:",
+        gl.getUniform(program, uniformLocation)
+      );
+    }
+    console.groupEnd();
+
+    console.groupEnd();
+  }
 }

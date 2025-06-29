@@ -1,5 +1,5 @@
 import { GLContext } from "./GLContext.js";
-import { Shader } from "./Shader.js";
+import { LegacyShader } from "./LegacyShader.js";
 import { Utils } from "./Utils.js";
 import "../../../gl-matrix-min.js";
 

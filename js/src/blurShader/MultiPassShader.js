@@ -1,6 +1,6 @@
 import { GLContext } from "../../GLContext.js";
 import { Texture } from "../../Texture.js";
-import { Shader } from "../../Shader.js";
+import { LegacyShader } from "../../LegacyShader.js";
 import { Utils } from "../../Utils.js";
 import "../../../gl-matrix-min.js";
 const glsl = (x) => x;
@@ -102,7 +102,7 @@ void main() {
     } else {
         fragColor = texture(uSampler, vTexCoord);
     }
-    fragColor = vec4(fragColor.rgb, 1.0f) - prepareCursor(5.0f, vec4(0.0, 0.0, 0.0, 0.5f));
+    fragColor = vec4(fragColor.rgb, 1.0f) - prepareCursor(50.0f, vec4(0.0, 0.0, 0.0, 0.5f));
   }
 `;
 
@@ -110,7 +110,7 @@ void main() {
  * MultiPassShader class for performing multi-pass image processing
  * such as blurring using a two-pass shader approach.
  * @class MultiPassShader
- * @extends Shader
+ * @extends LegacyShader
  * @param {GLContext} glContext - The WebGL context.
  * @param {string} name - The name of the shader.
  * @param {Object} inOutTexture - The input/output texture for the shader.
@@ -130,7 +130,7 @@ void main() {
  * const multiPassShader = new MultiPassShader(glContext, "BlurShader", inOutTexture, globalAttributes, globalUniforms, imageMap, false);
  * multiPassShader.render();
  *
- * @see {@link Shader} for the base shader class.
+ * @see {@link LegacyShader} for the base shader class.
  * @see {@link GLContext} for the WebGL context management.
  * @see {@link Texture} for texture handling.
  * @see {@link Utils} for utility functions like kernel generation.
@@ -141,9 +141,10 @@ void main() {
  * @since 1.0.0
  * @license https://creativecommons.org/licenses/by-nc-sa/4.0/
  */
-export class MultiPassShader extends Shader {
+export class MultiPassShader extends LegacyShader {
   name = "MultiPassShader";
   glContext = null;
+  gl = null;
   inOutTexture = null;
   intermediateTexture = null;
   map = null;
@@ -156,7 +157,6 @@ export class MultiPassShader extends Shader {
   height = 0;
 
   constructor(
-    glContext = this.glContext,
     name = this.name,
     inOutTexture,
     attributes = this.attributes,
@@ -165,10 +165,10 @@ export class MultiPassShader extends Shader {
     singlePass = null,
     direction = "horizontal"
   ) {
-    super(glContext.gl, name, vertCode, fragCode, attributes, uniforms);
-    this.gl = glContext.gl;
+    super(name, vertCode, fragCode, attributes, uniforms);
+    this.glContext = GLContext.getInstance();
+    this.gl = this.glContext.gl;
     this.inOutTexture = inOutTexture;
-    this.glContext = glContext;
     this.map = imageMap;
     this.attributes = attributes;
     this.uniforms = uniforms;
@@ -237,7 +237,7 @@ export class MultiPassShader extends Shader {
       this.height
     );
 
-    glContext.setShaderGlobal(this);
+    this.glContext.setShaderGlobal(this);
   }
 
   /* Render Cycle functions */

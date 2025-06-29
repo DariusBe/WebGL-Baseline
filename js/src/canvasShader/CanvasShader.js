@@ -1,5 +1,5 @@
 import { GLContext } from "../../GLContext.js";
-import { Shader } from "../../Shader.js";
+import { LegacyShader } from "../../LegacyShader.js";
 import { Utils } from "../../Utils.js";
 import { ModelOBJ } from "../../ModelOBJ.js";
 import "../../../gl-matrix-min.js";
@@ -82,23 +82,22 @@ void main() {
 }`;
 
 // inherit from Shader class
-export class CanvasShader extends Shader {
+export class CanvasShader extends LegacyShader {
   name = "CanvasShader";
-  glContext = null;
   texture = null;
   imageMap = null;
   attributes = null;
   uniforms = null;
 
   constructor(
-    glContext = this.glContext,
     name = this.name,
     attributes = this.attributes,
     uniforms = this.uniforms,
     imageMap
   ) {
-    super(glContext.gl, name, vertCode, fragCode, attributes, uniforms);
-    this.glContext = glContext;
+    super(name, vertCode, fragCode, attributes, uniforms);
+    this.glContext = GLContext.getInstance();
+    this.gl = this.glContext.gl;
     this.imageMap = imageMap;
     this.attributes = attributes;
     this.uniforms = uniforms;
@@ -132,7 +131,7 @@ export class CanvasShader extends Shader {
       "CLAMP_TO_EDGE",
       0
     );
-    glContext.setShaderGlobal(this);
+    this.glContext.setShaderGlobal(this);
   }
 
   render = (

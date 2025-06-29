@@ -218,8 +218,6 @@ export class GLContext {
       pressedButton,
     ]);
 
-    console.log(this.canvas.width, this.canvas.height);
-    console.log("mouse.x:", mouse[0], "mouse.y:", mouse[1]);
     this.updateGlobalUniform("uMouse", mouse);
   };
   touchmove = (e) => {
@@ -509,6 +507,58 @@ export class GLContext {
     );
 
     gl.bufferData(gl.UNIFORM_BUFFER, this.globalUniformData, gl.DYNAMIC_DRAW);
+  };
+
+  getGlobalUniformBlockLocation = (shader) => {
+    const gl = this.gl;
+    const blockIndex = gl.getUniformBlockIndex(
+      shader.program,
+      "GlobalUniforms"
+    );
+    if (blockIndex === -1) {
+      console.error(
+        "Uniform block 'GlobalUniforms' not found in shader",
+        shader.name
+      );
+      return null;
+    }
+    const blockSize = gl.getActiveUniformBlockParameter(
+      shader.program,
+      blockIndex,
+      gl.UNIFORM_BLOCK_DATA_SIZE
+    );
+    if (blockSize === -1) {
+      console.error(
+        "Uniform block 'GlobalUniforms' has no data size in shader",
+        shader.name
+      );
+      return null;
+    }
+    const blockBinding = gl.getUniformBlockParameter(
+      shader.program,
+      blockIndex,
+      gl.UNIFORM_BLOCK_BINDING
+    );
+    if (blockBinding === -1) {
+      console.error(
+        "Uniform block 'GlobalUniforms' has no binding in shader",
+        shader.name
+      );
+      return null;
+    }
+    console.log(
+      "Uniform block 'GlobalUniforms' in shader",
+      shader.name,
+      "has size",
+      blockSize,
+      "and binding",
+      blockBinding
+    );
+    return {
+      blockIndex,
+      blockSize,
+      blockBinding,
+    };
   };
 
   showMatrixGuides = () => {

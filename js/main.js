@@ -1,9 +1,11 @@
 import { GLContext } from "./GLContext.js";
-import { Shader } from "./Shader.js";
+import { LegacyShader } from "./LegacyShader.js";
 import { Utils } from "./Utils.js";
 import { ModelOBJ } from "./ModelOBJ.js";
 import { CanvasShader } from "./src/canvasShader/CanvasShader.js";
 import { MultiPassShader } from "./src/blurShader/MultiPassShader.js";
+import { Attribute } from "./Attribute.js";
+import { Uniform } from "./Uniform.js";
 import "../gl-matrix-min.js";
 
 /* Globals */
@@ -16,18 +18,35 @@ const canvas = glContext.canvas;
 const BYTE = 4;
 
 // render vars
-const KERNELSIZE = 13; // kernel size for blur
+const KERNELSIZE = 9; // kernel size for blur
 
 // global uniforms and attributes
-const globalUniforms = {
-  uSampler: ["1i", 0],
-  uSlider: ["1f", 0.5],
-};
-
-const globalAttributes = {
-  aPosition: [0, [3, "FLOAT", false, 5 * BYTE, 0], Utils.canvasAttribs],
-  aTexCoord: [1, [2, "FLOAT", false, 5 * BYTE, 3 * BYTE], Utils.canvasAttribs],
-};
+const uniforms = [
+  new Uniform("uSampler", "1i", 0),
+  new Uniform("uSlider", "1f", 0.5),
+];
+const attributes = [
+  new Attribute(
+    "aPosition",
+    0,
+    3,
+    "FLOAT",
+    false,
+    5 * BYTE,
+    0,
+    Utils.canvasAttribs
+  ),
+  new Attribute(
+    "aTexCoord",
+    1,
+    2,
+    "FLOAT",
+    false,
+    5 * BYTE,
+    3 * BYTE,
+    Utils.canvasAttribs
+  ),
+];
 
 /* CANVAS */
 const map = await Utils.loadImage("fun.jpg");
@@ -38,30 +57,28 @@ gl.viewport(0, 0, canvas.width, canvas.height);
 
 /* CANVAS */
 const canvasShader = new CanvasShader(
-  glContext,
   "CanvasShader",
-  globalAttributes,
-  null,
+  attributes,
+  uniforms,
   map
 );
 
 /* BLUR */
-const blurUniforms = Object.assign({}, globalUniforms, {
-  uKernelSize: ["1i", KERNELSIZE],
-  uKernel: ["1fv", Utils.gaussKernel1D(KERNELSIZE, KERNELSIZE / 6)],
-});
+const kernel = Utils.gaussKernel1D(KERNELSIZE, KERNELSIZE / 6);
+const testUniforms = [
+  new Uniform("uKernelSize", "1i", KERNELSIZE),
+  new Uniform("uKernel", "1fv", kernel),
+];
 const blurShader = new MultiPassShader(
-  glContext,
   "BlurShader",
   canvasShader.texture,
-  globalAttributes,
-  blurUniforms,
-  null,
-  false // single pass
+  attributes,
+  testUniforms,
+  null
 );
 /* SET ALL SHADERS GLOBAL */
 for (const shader of shaderList) {
-  shader.getShaderDetails();
+  shader.logShaderInfo();
 }
 
 glContext.animate(() => {
