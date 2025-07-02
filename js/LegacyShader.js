@@ -38,23 +38,19 @@ export class LegacyShader {
     fragmentShaderCode,
     attributes = null,
     uniforms = null,
-    tf_description = null,
-    verbose = false
+    tf_description = null
   ) {
-    if (verbose) {
-      console.groupCollapsed(name);
-    }
+    const verbosityLevel = GLContext.getInstance().verbosityLevel >= 3;
     this.gl = this.glContext.gl;
     this.name = name;
     this.program = this.prepareShaderProgram(
       vertexShaderCode,
       fragmentShaderCode,
-      tf_description !== null ? tf_description : null,
-      verbose
+      tf_description !== null ? tf_description : null
     );
 
-    this.prepareUniform(uniforms, verbose);
-    this.vao = this.prepareAttributes(attributes, verbose);
+    this.prepareUniform(uniforms);
+    this.vao = this.prepareAttributes(attributes);
     this.vaoList.push(this.vao);
     if (tf_description !== null) {
       // seperate tf_description into args { TF_Attribute, TF_varyings: ['vPoints'], TF_mode: gl.SEPARATE_ATTRIBS, TF_buffer: TF_BUFF_1, TF_bufferSize: BUFFSIZE }
@@ -65,39 +61,31 @@ export class LegacyShader {
         TF_attribute,
         buffer,
         bufferSize,
-        "DYNAMIC_DRAW",
-        verbose
+        "DYNAMIC_DRAW"
       );
-    }
-    if (verbose) {
-      console.groupEnd();
     }
   }
 
   /**
    * Creates a shader program from vertex and fragment shader code
-   *
-   * @param {WebGL2RenderingContext} gl The WebGL2 rendering context
    * @param {String} vertexShaderCode A string containing the vertex shader code
    * @param {String} fragmentShaderCode A string containing the fragment shader code
    * @param {Object} tf_description An object containing the transform feedback description as { TF_varyings=['vPoints'], TF_mode=gl.SEPARATE_ATTRIBS, TF_bufferSize=BUFFSIZE }
-   * @param {boolean} verbose If true, the console will output detailed information about the shader program
    * @returns {WebGLProgram} A WebGLProgram object
    * @throws {Error} If the shader program cannot be created
    */
-  prepareShaderProgram(
-    vertexShaderCode,
-    fragmentShaderCode,
-    tf_description,
-    verbose = false
-  ) {
-    const gl = this.gl;
+  prepareShaderProgram(vertexShaderCode, fragmentShaderCode, tf_description) {
+    const gl = GLContext.getInstance().gl;
+    const verbosityLevel = GLContext.getInstance().verbosityLevel;
+
     this.vertexShader = gl.createShader(gl.VERTEX_SHADER);
     this.vertexShader.name = this.name + "VertShader";
     gl.shaderSource(this.vertexShader, vertexShaderCode);
     gl.compileShader(this.vertexShader);
-    if (!gl.getShaderParameter(this.vertexShader, gl.COMPILE_STATUS)) {
-      console.groupEnd();
+    if (
+      verbosityLevel > 0 &&
+      !gl.getShaderParameter(this.vertexShader, gl.COMPILE_STATUS)
+    ) {
       console.error(
         "Error compiling ",
         this.vertexShader.name,
@@ -110,8 +98,10 @@ export class LegacyShader {
     this.fragmentShader.name = this.name + "FragShader";
     gl.shaderSource(this.fragmentShader, fragmentShaderCode);
     gl.compileShader(this.fragmentShader);
-    if (!gl.getShaderParameter(this.fragmentShader, gl.COMPILE_STATUS)) {
-      console.groupEnd();
+    if (
+      verbosityLevel > 0 &&
+      !gl.getShaderParameter(this.fragmentShader, gl.COMPILE_STATUS)
+    ) {
       console.error(
         "Error compiling ",
         this.fragmentShader.name,
@@ -129,7 +119,7 @@ export class LegacyShader {
       const { TF_attribute, TF_varyings, TF_mode, TF_bufferSize } =
         tf_description;
       this.tfBufferSize = TF_bufferSize;
-      if (verbose) {
+      if (verbosityLevel >= 3) {
         console.info(
           "Transform feedback enabled with varyings:",
           TF_varyings,
@@ -149,8 +139,10 @@ export class LegacyShader {
 
     gl.linkProgram(shaderProgram);
 
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-      console.groupEnd();
+    if (
+      verbosityLevel > 0 &&
+      !gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)
+    ) {
       console.error(
         "Error linking program",
         gl.getProgramInfoLog(shaderProgram)
@@ -166,8 +158,9 @@ export class LegacyShader {
    * @param {boolean} verbose if true, success message is printed
    * @returns {void}
    */
-  prepareUniform = (uniforms = null, verbose = false) => {
-    const gl = this.gl;
+  prepareUniform = (uniforms = null) => {
+    const gl = GLContext.getInstance().gl;
+    const verbosityLevel = 5;
     const program = this.program;
 
     gl.useProgram(program);
@@ -175,6 +168,7 @@ export class LegacyShader {
     var usedUniforms = [];
     var unusedUniforms = [];
     if (uniforms === null || uniforms === undefined) return;
+
     if (Array.isArray(uniforms)) {
       for (const uniform of uniforms) {
         const uniformLocation = gl.getUniformLocation(program, uniform.name);
@@ -207,87 +201,50 @@ export class LegacyShader {
         } else if (uniform.type === "4iv") {
           gl.uniform4iv(uniformLocation, uniform.value);
         } else {
-          console.groupEnd();
           console.error("Unknown uniform type:", uniform.type);
         }
         // add to uniform list
         this.uniformList.push(uniform.name);
       }
-      for (const unif of this.uniformList) {
-        console.log("Uniform:", unif);
+    } else if (typeof uniforms !== "object") {
+      for (var [uniformName, [type, value]] of Object.entries(uniforms)) {
+        const uniformLocation = gl.getUniformLocation(program, uniformName);
+        if (uniformLocation === null) {
+          unusedUniforms.push([uniformName, [type, value]]);
+          continue;
+        } else {
+          usedUniforms.push([uniformName, [type, value]]);
+        }
+        if (type === "bool") {
+          gl.uniform1i(uniformLocation, value);
+        } else if (type === "1f") {
+          gl.uniform1f(uniformLocation, value);
+        } else if (type === "1fv") {
+          gl.uniform1fv(uniformLocation, value);
+        } else if (type === "2fv") {
+          gl.uniform2fv(uniformLocation, value);
+        } else if (type === "3fv") {
+          gl.uniform3fv(uniformLocation, value);
+        } else if (type === "4fv") {
+          gl.uniform4fv(uniformLocation, value);
+        } else if (type === "1i") {
+          gl.uniform1i(uniformLocation, value);
+        } else if (type === "1iv") {
+          gl.uniform1iv(uniformLocation, value);
+        } else if (type === "2iv") {
+          gl.uniform2iv(uniformLocation, value);
+        } else if (type === "3iv") {
+          gl.uniform3iv(uniformLocation, value);
+        } else if (type === "4iv") {
+          gl.uniform4iv(uniformLocation, value);
+        } else {
+          console.groupEnd();
+          console.error("Unknown uniform type:", type);
+        }
+        // add to uniform list
+        this.uniformList[uniformName] = [type, value];
+        return;
       }
-      return;
-    }
-    for (var [uniformName, [type, value]] of Object.entries(uniforms)) {
-      const uniformLocation = gl.getUniformLocation(program, uniformName);
-      if (uniformLocation === null) {
-        unusedUniforms.push([uniformName, [type, value]]);
-        continue;
-      } else {
-        usedUniforms.push([uniformName, [type, value]]);
-      }
-      if (type === "bool") {
-        gl.uniform1i(uniformLocation, value);
-      } else if (type === "1f") {
-        gl.uniform1f(uniformLocation, value);
-      } else if (type === "1fv") {
-        gl.uniform1fv(uniformLocation, value);
-      } else if (type === "2fv") {
-        gl.uniform2fv(uniformLocation, value);
-      } else if (type === "3fv") {
-        gl.uniform3fv(uniformLocation, value);
-      } else if (type === "4fv") {
-        gl.uniform4fv(uniformLocation, value);
-      } else if (type === "1i") {
-        gl.uniform1i(uniformLocation, value);
-      } else if (type === "1iv") {
-        gl.uniform1iv(uniformLocation, value);
-      } else if (type === "2iv") {
-        gl.uniform2iv(uniformLocation, value);
-      } else if (type === "3iv") {
-        gl.uniform3iv(uniformLocation, value);
-      } else if (type === "4iv") {
-        gl.uniform4iv(uniformLocation, value);
-      } else {
-        console.groupEnd();
-        console.error("Unknown uniform type:", type);
-      }
-      // add to uniform list
-      this.uniformList[uniformName] = [type, value];
-    }
-    if (verbose && (usedUniforms.length > 0 || unusedUniforms.length > 0)) {
-      console.groupCollapsed(this.name, "- prepared uniforms:");
-      console.log(
-        "USED:",
-        ...usedUniforms.reduce((acc, used) => {
-          acc.push(
-            "\n  •",
-            used[0].concat(":"),
-            used[1][0].concat(","),
-            used[1][1].constructor.name == ("Float32Array" || "Array")
-              ? used[1][1]
-                  .slice(0, 2)
-                  .map((num) => parseFloat(Number(num).toFixed(2))) + ", ..."
-              : used[1][1]
-          );
-          return acc;
-        }, [])
-      );
-      console.log(
-        "UNUSED:",
-        ...unusedUniforms.reduce((acc, unused) => {
-          acc.push(
-            "\n  •",
-            unused[0].concat(":"),
-            unused[1][0].concat(","),
-            unused[1][1].constructor.name === ("Float32Array" || "Array")
-              ? unused[1][1].slice(0, 2) + ", ..."
-              : unused[1][1]
-          );
-          return acc;
-        }, [])
-      );
-      console.groupEnd();
     }
   };
 
@@ -1023,37 +980,40 @@ export class LegacyShader {
     console.groupEnd();
 
     // FBOs
-    console.groupCollapsed("FBOs");
-    const getFBOTextureName = (program, fbo) => {
-      if (fbo === null) {
-        return "none";
-      } else {
-        gl.useProgram(program);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-        const tex = gl.getFramebufferAttachmentParameter(
-          gl.FRAMEBUFFER,
-          gl.COLOR_ATTACHMENT0,
-          gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
-        );
-        return tex.name;
-      }
-    };
-    console.log(
-      this.fbo.length == 0 ? "none" : " ",
-      ...this.fbo.reduce((acc, fbo) => {
-        acc.push(
-          "\n •",
-          gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
-            ? "[COMPLETE]"
-            : "[INCOMPLETE]",
-          fbo.name,
-          "\n\t→ bound to",
-          getFBOTextureName(program, fbo)
-        );
-        return acc;
-      }, [])
-    );
-    console.groupEnd();
+    if (this.fbo.length != 0) {
+      console.groupCollapsed("FBOs");
+      const getFBOTextureName = (program, fbo) => {
+        if (fbo === null) {
+          return "none";
+        } else {
+          gl.useProgram(program);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+          const tex = gl.getFramebufferAttachmentParameter(
+            gl.FRAMEBUFFER,
+            gl.COLOR_ATTACHMENT0,
+            gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME
+          );
+          return tex.name;
+        }
+      };
+      console.log(
+        this.fbo.length == 0 ? "none" : " ",
+        ...this.fbo.reduce((acc, fbo) => {
+          acc.push(
+            "\n •",
+            gl.checkFramebufferStatus(gl.FRAMEBUFFER) ===
+              gl.FRAMEBUFFER_COMPLETE
+              ? "[COMPLETE]"
+              : "[INCOMPLETE]",
+            fbo.name,
+            "\n\t→ bound to",
+            getFBOTextureName(program, fbo)
+          );
+          return acc;
+        }, [])
+      );
+      console.groupEnd();
+    }
 
     // Textures
     console.groupCollapsed("Textures");
@@ -1084,56 +1044,63 @@ export class LegacyShader {
     console.groupEnd();
 
     // Buffers
-    console.groupCollapsed("Buffers");
-    console.log(
-      ...this.bufferList.reduce((acc, buff) => {
-        gl.bindBuffer(gl.ARRAY_BUFFER, buff);
-        const buffSize = gl.getBufferParameter(gl.ARRAY_BUFFER, gl.BUFFER_SIZE);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        acc.push("\n •", buff.name + ":", buffSize, "Byte");
-        return acc;
-      }, [])
-    );
-    console.groupEnd();
+    if (this.bufferList.length != 0) {
+      console.groupCollapsed("Buffers");
+      console.log(
+        ...this.bufferList.reduce((acc, buff) => {
+          gl.bindBuffer(gl.ARRAY_BUFFER, buff);
+          const buffSize = gl.getBufferParameter(
+            gl.ARRAY_BUFFER,
+            gl.BUFFER_SIZE
+          );
+          gl.bindBuffer(gl.ARRAY_BUFFER, null);
+          acc.push("\n •", buff.name + ":", buffSize, "Byte");
+          return acc;
+        }, [])
+      );
+      console.groupEnd();
 
-    // Attributes
-    console.groupCollapsed("Attributes");
-    this.attributeList = [];
-    for (
-      let i = 0;
-      i < gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
-      i++
-    ) {
-      const attribInfo = gl.getActiveAttrib(program, i);
-      const attribName = attribInfo.name;
-      const attribLocation = gl.getAttribLocation(program, attribName);
-      const attribSize = attribInfo.size;
-      this.attributeList.push({
-        name: attribName,
-        location: attribLocation,
-        size: attribSize,
-      });
+      // Attributes
+      console.groupCollapsed("Attributes");
+      this.attributeList = [];
+      for (
+        let i = 0;
+        i < gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+        i++
+      ) {
+        const attribInfo = gl.getActiveAttrib(program, i);
+        const attribName = attribInfo.name;
+        const attribLocation = gl.getAttribLocation(program, attribName);
+        const attribSize = attribInfo.size;
+        this.attributeList.push({
+          name: attribName,
+          location: attribLocation,
+          size: attribSize,
+        });
+      }
+      console.log(
+        "(" +
+          gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) +
+          " active)",
+        ...this.attributeList.reduce((acc, attrib) => {
+          acc.push(
+            "\n •",
+            attrib.name,
+            "\n\t",
+            "location:",
+            attrib.location,
+            "\n\t",
+            "size:",
+            attrib.size,
+            "\n\t",
+            "buffer:",
+            attrib.name + "_Buffer" + "\n"
+          );
+          return acc;
+        }, [])
+      );
+      console.groupEnd();
     }
-    console.log(
-      "(" + gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES) + " active)",
-      ...this.attributeList.reduce((acc, attrib) => {
-        acc.push(
-          "\n •",
-          attrib.name,
-          "\n\t",
-          "location:",
-          attrib.location,
-          "\n\t",
-          "size:",
-          attrib.size,
-          "\n\t",
-          "buffer:",
-          attrib.name + "_Buffer" + "\n"
-        );
-        return acc;
-      }, [])
-    );
-    console.groupEnd();
 
     // Uniforms
     console.groupCollapsed("Uniforms");

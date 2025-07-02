@@ -112,14 +112,28 @@ export class Utils {
    * Positions for a quad covering the entire canvas.
    */
   static canvasPoints = new Float32Array([
-    -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
+    // QUAD bottom left
+    -1.0, -1.0, 0.0,
+    // QUAD bottom right
+    1.0, -1.0, 0.0,
+    // QUAD top right
+    1.0, 1.0, 0.0,
+    // QUAD top left
+    -1.0, 1.0, 0.0,
   ]);
 
   /**
    * Quad texture coordinates for a full screen quad.
    */
   static quadTextCoords = new Float32Array([
-    0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
+    // QUAD bottom left
+    0.0, 0.0,
+    // QUAD bottom right
+    1.0, 0.0,
+    // QUAD top right
+    1.0, 1.0,
+    // QUAD top left
+    0.0, 1.0,
   ]);
 
   /**
@@ -129,9 +143,31 @@ export class Utils {
    * [x][y][z]-[u][v] (5 BYTES per line (Stride), 3 BYTE Offset for aTexCoords)
    */
   static canvasAttribs = new Float32Array([
-    // vec3 aPosition,  vec2 aTexCoord
-    -1.0, -1.0, 0.0, 0.0, 0.0, 1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0,
-    1.0, -1.0, 1.0, 0.0, 0.0, 1.0,
+    // QUAD bottom left (xyz, uv)
+    -1.0, -1.0, 0.0, 0.0, 0.0,
+    // QUAD bottom right (xyz, uv)
+    1.0, -1.0, 0.0, 1.0, 0.0,
+    // QUAD top right (xyz, uv)
+    1.0, 1.0, 0.0, 1.0, 1.0,
+    // QUAD top left (xyz, uv)
+    -1.0, 1.0, 0.0, 0.0, 1.0,
+  ]);
+
+  /**
+   * #### A Float32Array containing a the coordinates of a flat canvas plane and their texture coordinates in the following layout:
+   *
+   * [x][y][z]-[u][v]-[nx][ny][nz] (8 BYTES per line (Stride), 3 BYTE Offset for aTexCoords, 3 BYTE Offset for aNormal)
+   * This is used for rendering a quad with normals, e.g. for lighting calculations.
+   */
+  static canvasAttribsWithNormals = new Float32Array([
+    // QUAD bottom left (xyz, uv, normal, rgb)
+    -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0,
+    // QUAD bottom right (xyz, uv, normal, rgb)
+    1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0,
+    // QUAD top right (xyz, uv, normal, rgb)
+    1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 1.0,
+    // QUAD top left (xyz, uv, normal, rgb)
+    -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
   ]);
 
   /**

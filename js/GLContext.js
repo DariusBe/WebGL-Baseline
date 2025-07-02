@@ -1,5 +1,4 @@
 import { Utils } from "./Utils.js";
-// use whole of gl-matrix from gl-matrix-min.js
 import "../../gl-matrix-min.js";
 
 /**
@@ -19,13 +18,14 @@ export class GLContext {
 
   /* MEMBERS */
   gl;
-  shaderList = [];
+  shaderList = new Map(); // Map of shader names to Shader objects
   canvas;
   sliderVal = 0.6;
   inputs = [];
   tick = 0.0;
   timestep = 1.0; // 60 FPS
   stats = {};
+  verbosityLevel = 0; // 0: no output, 1: errors, 2: warnings, 3: info, 4: debug
 
   // global Uniform Buffer Object
   globalUniformBuffer;
@@ -35,7 +35,6 @@ export class GLContext {
   globalUniformLocation = {};
 
   // global uniforms
-  uModel;
   uView;
   uProjection;
   uResolution;
@@ -48,7 +47,11 @@ export class GLContext {
   ortho;
   perspective;
 
-  constructor(context = "webgl-canvas") {
+  /*   * Constructor
+   * @param {string} context - the id of the canvas element to use for WebGL2 context
+   * @param {number} verbosityLevel - the level of verbosity for logging (0: none, 1: errors, 2: warnings, 3: info, 4: debug)
+   */
+  constructor(context = "webgl-canvas", verbosityLevel = 1) {
     // initialize the canvas and WebGL2 context
     // set gl context to use MSAA
     this.canvas = document.getElementById(context);
@@ -63,6 +66,14 @@ export class GLContext {
     if (!this.gl) {
       throw new Error("WebGL2 not supported");
     }
+    // hint for fragment shader derivatives
+    this.gl.hint(this.gl.FRAGMENT_SHADER_DERIVATIVE_HINT, this.gl.NICEST);
+
+    // enable WebGL2 extensions for float textures and blending
+    this.gl.getExtension("EXT_color_buffer_float"); // enable float textures
+    this.gl.getExtension("EXT_float_blend"); // enable float blending
+    this.gl.getExtension("OES_texture_float_nearest"); // enable linear filtering for float textures, alternative: nearest
+    this.gl.getExtension("OES_texture_float"); // enable float textures
 
     // get HTML stats element
     this.stats = {
@@ -77,23 +88,23 @@ export class GLContext {
       this.stats.fps.innerHTML = "0";
     }
 
+    console.groupCollapsed("WebGL2 context created");
+
+    if (this.verbosityLevel >= 3) {
+      this.listContextStats();
+    }
     console.log(
-      "WebGL2 context created, canvas:",
+      "With canvas of size",
       this.canvas.width,
       "x",
-      this.canvas.height
+      this.canvas.height,
+      "and power preference",
+      this.gl.getContextAttributes().powerPreference
     );
-    this.gl.getExtension("EXT_color_buffer_float"); // enable float textures
-    this.gl.getExtension("EXT_float_blend"); // enable float blending
-    this.gl.getExtension("OES_texture_float_nearest"); // enable linear filtering for float textures, alternative: nearest
-    this.gl.getExtension("OES_texture_float"); // enable float textures
 
-    this.gl.hint(this.gl.FRAGMENT_SHADER_DERIVATIVE_HINT, this.gl.NICEST);
-
-    this.uModel = new glMatrix.mat4.create();
+    // set model, view, and projection matrices
     this.uView = new glMatrix.mat4.create();
     this.uProjection = new glMatrix.mat4.create();
-
     this.lookAt = glMatrix.mat3.fromValues(
       0,
       0,
@@ -113,31 +124,17 @@ export class GLContext {
     this.prepareGlobalUniforms();
     this.preparePerspective();
 
+    // set up global uniforms
+    this.cameraTransform();
+    this.updateGlobalUniform("uView", this.uView);
+    this.updateGlobalUniform("uProjection", this.uProjection);
+
+    // set up event listeners
     this.canvas.addEventListener("touchmove", this.touchmove);
     this.canvas.addEventListener("mousemove", this.onmousemove);
     window.addEventListener("resize", this.onresize);
 
-    /* get all inputs with id starting with 'matrix_' and setup event listeners */
-    this.inputs = document.querySelectorAll('input[id^="matrix_"]');
-    const inputMatrix = [];
-
-    for (const input of this.inputs) {
-      inputMatrix.push(input);
-    }
-    for (const input of inputMatrix) {
-      const that = this;
-      input.oninput = function () {
-        const str = this.value;
-        const val = parseFloat(this.value);
-        if (val.constructor.name == "Number") {
-          const id = this.id.split("_");
-          const whichMatrix = id[1];
-          const row = parseInt(id[2]) - 1;
-          const col = parseInt(id[3]) - 1;
-          that.updateInputMatrix(whichMatrix, row, col, val);
-        }
-      };
-    }
+    console.groupEnd();
   }
 
   /**
@@ -191,8 +188,8 @@ export class GLContext {
     );
   };
   cameraTransform = () => {
-    glMatrix.mat4.rotate(this.uModel, this.uModel, 0.01, [0, 0.53, 0.25]);
-    // glMatrix.mat4.scale(this.uModel, this.uModel, [.999, .999, .999]);
+    // glMatrix.mat4.rotate(this.uView, this.uView, 0.025, [0, 0.53, 0.25]);
+    // glMatrix.mat4.scale(this.uView, this.uView, [0.999, 0.999, 0.999]);
   };
   /* EVENT HANDLERS*/
   onmousemove = (e) => {
@@ -255,43 +252,6 @@ export class GLContext {
       );
     }
   };
-  updateInputMatrix = (whichMatrix, row, col, val) => {
-    switch (whichMatrix) {
-      case "M":
-        // check if value is a number, if NaN, return
-        if (val.constructor.name === "Number") {
-          this.uModel[row * 4 + col] = val;
-          // to rotate MV matrix by 45 degrees, multiply by rotation matrix
-          this.updateGlobalUniform("uModel", this.uModel);
-          console.log("Model Matrix changed");
-          console.log(Utils.printMatrix(this.uModel, 4, 4, 2));
-          return;
-        }
-        break;
-      case "V":
-        // check if value is a number, if NaN, return
-        if (val.constructor.name === "Number") {
-          this.uView[row * 4 + col] = val;
-          // to rotate MV matrix by 45 degrees, multiply by rotation matrix
-          this.updateGlobalUniform("uModel", this.uView);
-          console.log("View Matrix changed");
-          console.log(Utils.printMatrix(this.uView, 4, 4, 2));
-          return;
-        }
-        break;
-      case "P":
-        if (val.constructor.name === "Number") {
-          this.uProjection[row * 4 + col] = val;
-          this.updateGlobalUniform("uProjection", this.uProjection);
-          console.log("Pers. Matrix changed");
-          console.log(Utils.printMatrix(this.uProjection, 4, 4, 2));
-          return;
-        }
-        break;
-      default:
-        break;
-    }
-  };
 
   /**
    * List the capabilities of the WebGL context
@@ -348,22 +308,21 @@ export class GLContext {
    * @param {boolean} verbose - whether to print the buffer layout to console
    */
   fillGlobalUniformBuffer = (verbose = false) => {
-    this.globalUniformData = new Float32Array(16 + 16 + 16 + 2 + 1 + 1 + 4); // 56 BYTE
+    this.globalUniformData = new Float32Array(16 + 16 + 2 + 1 + 1 + 4); //
     /** Buffer Layout:
      * populate buffer with data
      *  1) mat4 uProjection; == 4 * 4 == 16 elements in one chunk
      *  2) mat4 uView; == 4 * 4 == 16 elements in two chunks
-     *  3) mat4 uModel; == 4 * 4 == 16 elements in two chunks
      *  4) uniform vec2 uResolution; == 2 elements in chunk
      *  5) uniform float uTime; == 1 element in chunk
      *  6) uniform bool uShowCursor; == 1 element in chunk
      *  7) uniform vec3 uMouse; == 3 elements in chunk
      *  [1][1][1][1] x 4
      *  [2][2][2][2] x 4
-     *  [3][3][3][3] x 4
-     *  [4][4]-[5]-[6]
-     *  [7][7][7]-[Pad]
+     *  [3][3]-[4]-[5]
+     *  [6][6][6]-[Pad]
      */
+    const offsets = [0, 16, 32, 34, 35, 36];
 
     this.uResolution = new Float32Array([
       this.canvas.width,
@@ -377,25 +336,22 @@ export class GLContext {
 
     const chunk1 = this.uProjection;
     const chunk2 = this.uView;
-    const chunk3 = this.uModel;
 
     this.globalUniformLocation = {
       uProjection: 0,
       uView: 16,
-      uModel: 32,
-      uResolution: 48,
-      uTime: 50,
-      uShowCursor: 51,
-      uMouse: 52,
+      uResolution: 32,
+      uTime: 34,
+      uShowCursor: 35,
+      uMouse: 36,
     };
 
     this.globalUniformData.set(chunk1, 0);
     this.globalUniformData.set(chunk2, 16);
-    this.globalUniformData.set(chunk3, 32);
-    this.globalUniformData.set(this.uResolution, 48);
-    this.globalUniformData.set(this.uTime, 50);
-    this.globalUniformData.set(this.uShowCursor, 51);
-    this.globalUniformData.set(this.uMouse, 52);
+    this.globalUniformData.set(this.uResolution, 32);
+    this.globalUniformData.set(this.uTime, 34);
+    this.globalUniformData.set(this.uShowCursor, 35);
+    this.globalUniformData.set(this.uMouse, 36);
 
     if (verbose) {
       console.groupCollapsed(
@@ -413,12 +369,6 @@ export class GLContext {
         "[Positions 16-31]",
         "\n",
         Utils.printMatrix(this.globalUniformData.slice(16, 32), 4)
-      );
-      console.log(
-        "uModel",
-        "[Positions 32-47]",
-        "\n",
-        Utils.printMatrix(this.globalUniformData.slice(32, 48), 4)
       );
       console.log(
         "uResolution",
@@ -478,7 +428,8 @@ export class GLContext {
    * @returns {void}
    */
   setShaderGlobal = (shader) => {
-    this.shaderList.push(shader);
+    this.shaderList.set(shader.name, shader);
+    console.info("Setting shader global:", shader.name);
     this.prepareGlobalUniforms();
   };
 
@@ -490,7 +441,7 @@ export class GLContext {
     const gl = this.gl;
 
     // set uniform block binding point for each shader
-    for (const shader of this.shaderList) {
+    for (const shader of this.shaderList.values()) {
       gl.uniformBlockBinding(
         shader.program,
         gl.getUniformBlockIndex(shader.program, "GlobalUniforms"),
@@ -595,7 +546,6 @@ export class GLContext {
     this.updateGlobalUniform("uTime", this.tick);
     this.gl.bindBuffer(this.gl.UNIFORM_BUFFER, this.globalUniformBuffer);
     this.updateGlobalUniform("uTime", this.tick);
-    this.updateGlobalUniform("uModel", this.uModel);
     this.updateGlobalUniform("uView", this.uView);
     this.updateGlobalUniform("uProjection", this.uProjection);
 

@@ -2,6 +2,7 @@ import { GLContext } from "../../GLContext.js";
 import { LegacyShader } from "../../LegacyShader.js";
 import { Utils } from "../../Utils.js";
 import { ModelOBJ } from "../../ModelOBJ.js";
+import { ShaderProgram } from "../../ShaderProgram.js";
 import "../../../gl-matrix-min.js";
 const glsl = (x) => x;
 
@@ -81,7 +82,6 @@ void main() {
     fragColor = vec4(tex);
 }`;
 
-// inherit from Shader class
 export class CanvasShader extends LegacyShader {
   name = "CanvasShader";
   texture = null;
@@ -148,3 +148,71 @@ export class CanvasShader extends LegacyShader {
     gl.bindTexture(gl.TEXTURE_2D, null);
   };
 }
+
+// // inherit from Shader class
+// export class CanvasShader extends LegacyShader {
+//   name = "CanvasShader";
+//   texture = null;
+//   imageMap = null;
+//   attributes = null;
+//   uniforms = null;
+
+//   constructor(
+//     name = this.name,
+//     attributes = this.attributes,
+//     uniforms = this.uniforms,
+//     imageMap
+//   ) {
+//     super(name, vertCode, fragCode, attributes, uniforms);
+//     this.glContext = GLContext.getInstance();
+//     this.gl = this.glContext.gl;
+//     this.imageMap = imageMap;
+//     this.attributes = attributes;
+//     this.uniforms = uniforms;
+
+//     if (imageMap === null || imageMap === undefined) {
+//       console.warn(
+//         "No map provided to",
+//         name,
+//         ", generating placeholder texture."
+//       );
+//       imageMap = Utils.getPinkStartTexture(512, 512);
+//       imageMap.width = 512;
+//       imageMap.height = 512;
+//     } else {
+//       console.log(
+//         "Using provided imageMap for",
+//         name,
+//         "of size",
+//         imageMap.width,
+//         "x",
+//         imageMap.height
+//       );
+//     }
+//     this.texture = this.prepareImageTexture(
+//       "uSampler",
+//       imageMap,
+//       "canvasTex",
+//       imageMap.width,
+//       imageMap.height,
+//       "NEAREST",
+//       "CLAMP_TO_EDGE",
+//       0
+//     );
+//     this.glContext.setShaderGlobal(this);
+//   }
+
+//   render = (
+//     drawArrays = () => this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, 4)
+//   ) => {
+//     const gl = this.gl;
+//     gl.useProgram(this.program);
+//     gl.bindVertexArray(this.vao);
+
+//     gl.activeTexture(gl.TEXTURE0);
+//     gl.bindTexture(gl.TEXTURE_2D, this.texture);
+//     drawArrays();
+//     gl.bindVertexArray(null);
+//     gl.bindTexture(gl.TEXTURE_2D, null);
+//   };
+// }
