@@ -35,55 +35,41 @@ mars.addMaterial(marsMaterial, false);
 mars.activeMaterial = marsMaterial;
 scene.add(mars);
 
-const sphere = await SceneObject.createFromOBJ(
+const europaTex = new Texture(
+  "EuropaTexture",
+  await Utils.loadImage("resources/models/europa.png", 1024, 512),
+  1024,
+  512,
+  "RGBA16F",
+  "LINEAR",
+  "RGBA",
+  "FLOAT",
+  "CLAMP_TO_EDGE"
+);
+const europa = await SceneObject.createFromOBJ(
   "resources/models/sphere.obj",
   "resources/models/sphere.mtl"
 );
-const sphereMaterial = new Material("SphereMaterial", null, null, null, null);
-sphere.addMaterial(sphereMaterial, false);
-sphere.activeMaterial = sphereMaterial;
-mars.addChild(sphere);
-
-for (const item of scene.getHierarchyList()) {
-  console.groupCollapsed(item.name);
-}
-console.groupEnd();
-console.groupEnd();
-console.groupEnd();
+europa.transform.setScale(0.5, 0.5, 0.5);
+const sphereMaterial = new Material("SphereMaterial", null, null, europaTex);
+europa.addMaterial(sphereMaterial, false);
+europa.activeMaterial = sphereMaterial;
+mars.addChild(europa);
 
 // setting up renderer
 const renderer = new Renderer();
 
-// enable face culling
-// gl.enable(gl.CULL_FACE);
-// gl.cullFace(gl.BACK);
-// gl.frontFace(gl.CCW);
-// // enable depth testing
-// gl.enable(gl.DEPTH_TEST);
-// gl.depthFunc(gl.LEQUAL);
-// gl.viewport(0, 0, glContext.canvas.width, glContext.canvas.height);
-// gl.clearColor(0.0, 0.0, 0.0, 1.0);
-// object.geometry.bind();
-// object.showWireframe();
-// const bufferSize = object.geometry.vertices.length * 2; // 2 vertices per line, 3 lines per face
-
 const mainCamera = new Camera("mainCamera");
 mainCamera.transform.setTranslation(0, 0, 2); // Default position
-
-// const render = () => {
-//   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-//   gl.drawArrays(gl.LINES, 0, bufferSize);
-// };
 
 // animate;
 const animate = () => {
   glContext.updateUniforms();
-  mars.transform.rotate(0, Math.PI * -0.0005, 0);
+  mars.transform.rotate(0, Math.PI * -0.0025, 0);
   mars.transform.setScale(0.35, 0.35, 0.35);
 
-  sphere.transform.setTranslation(2, 0.0, 0.0);
-  sphere.transform.rotate(0, Math.PI * -0.005, 0);
-  sphere.transform.setScale(0.5, 0.5, 0.5);
+  europa.transform.setTranslation(2, 0.0, 0.0);
+  europa.transform.rotate(0, Math.PI * -0.005, 0);
 
   renderer.render(scene, mainCamera);
   requestAnimationFrame(animate);

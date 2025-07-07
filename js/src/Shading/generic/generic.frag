@@ -86,5 +86,12 @@ void main() {
     // fragColor = col;
     vec4 lambert = lambertianShading(vec4(5.0, 15.0, 25.0, 1.0), vec4(1.0, 0.95342, 0.864706, 1.0), 1.5);
 
-    fragColor += lambert * vec4(vColor.rgb, 1.0);
+    // Apply texture if available
+    vec4 textureColor = texture(uSampler, vTexCoord);
+
+    if (textureColor.a < 0.1) {
+        fragColor = lambert;
+    } else {
+        fragColor = textureColor;
+    }
 }

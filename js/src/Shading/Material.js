@@ -32,28 +32,6 @@ export class Material {
     if (this.uniformData == null) {
       this.uniformData = new Map();
     }
-    if (this.texture == null) {
-      console.info("No texture provided, creating a default one.");
-
-      this.texture = new Texture(
-        "defaultTexture",
-        null,
-        512,
-        512,
-        "RGBA16F",
-        "LINEAR",
-        "RGBA",
-        "FLOAT",
-        "CLAMP_TO_EDGE"
-      );
-    }
-    this.texture.bindTexture();
-
-    // set basic uniforms
-    // this.setUniform(
-    //   // new Uniform("uSampler", "1i", 0, this.texture.webGLTexture)
-    // );
-    this.setUniform(new Uniform("uModel", "mat4", glMatrix.mat4.create()));
   }
 
   /**

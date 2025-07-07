@@ -3,6 +3,7 @@ import { Scene } from "./Scene.js";
 import { SceneObject } from "./SceneObject.js";
 import { Camera } from "./Camera.js";
 import { Viewport } from "../../Viewport.js";
+import { Texture } from "../Shading/Texture.js";
 import "../../../gl-matrix-min.js";
 import { Uniform } from "../GL/Uniform.js";
 
@@ -44,6 +45,16 @@ export class Renderer {
     if (object.activeMaterial && object.activeMaterial.shaderProgram) {
       const shader = object.activeMaterial.shaderProgram;
       shader.use();
+
+      if (
+        object.activeMaterial.texture &&
+        object.activeMaterial.texture instanceof Texture
+      ) {
+        object.activeMaterial.texture.bindTexture(0);
+      } else {
+        // make sure no texture is bound
+        this.gl.bindTexture(this.gl.TEXTURE_2D, null);
+      }
 
       object.activeMaterial.setUniform(
         new Uniform("uModel", "mat4", transform)
