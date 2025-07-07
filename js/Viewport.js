@@ -1,4 +1,4 @@
-import { Camera } from "./Camera.js";
+import { Camera } from "./src/Scene/Camera.js";
 import { RenderTarget } from "./RenderTarget.js";
 
 export class Viewport {

@@ -1,4 +1,4 @@
-import { GLContext } from "./GLContext.js";
+import { GLContext } from "./src/GL/GLContext.js";
 
 export class RenderTarget {
   constructor(width, height, options = {}) {
