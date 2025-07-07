@@ -59,8 +59,11 @@ vec4 threshold(vec4 col, vec4 lower, vec4 upper, float value) {
 
 vec4 lambertianShading(vec4 lightPosition, vec4 lightColor, float lightIntensity) {
     vec4 lightDirection = normalize(lightPosition * uModel - vec4(vPosition, 1.0));
+    float d = length(lightPosition.xyz - vPosition);
+    float attenuation = 1.0 / max(d * d, 0.00001);
+
     float diffuse = max(dot(vec4(vNormal, 1.0), lightDirection), 0.125);
-    vec3 baseColor = vColor.rgb * diffuse * lightColor.rgb * lightIntensity;
+    vec3 baseColor = diffuse * lightColor.rgb * lightIntensity * attenuation;
     return vec4(baseColor, 1.0);
 }
 
@@ -84,7 +87,7 @@ void main() {
     // col = threshold(col, BLACK, WHITE, 0.5);
 
     // fragColor = col;
-    vec4 lambert = lambertianShading(vec4(5.0, 15.0, 25.0, 1.0), vec4(1.0, 0.95342, 0.864706, 1.0), 1.5);
+    vec4 lambert = lambertianShading(vec4(5.0, 15.0, 25.0, 1.0), vec4(1.0, 0.95342, 0.864706, 1.0), 1000.0);
 
     // Apply texture if available
     vec4 textureColor = texture(uSampler, vTexCoord);
@@ -92,6 +95,6 @@ void main() {
     if (textureColor.a < 0.1) {
         fragColor = lambert;
     } else {
-        fragColor = textureColor;
+        fragColor = textureColor * lambert;
     }
 }

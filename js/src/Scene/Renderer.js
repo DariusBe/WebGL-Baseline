@@ -13,7 +13,7 @@ export class Renderer {
     // set camera viewport
     this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
     // set the clear color
-    this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
     // enable face culling
     this.gl.enable(this.gl.CULL_FACE);
