@@ -1,5 +1,4 @@
 import { GLContext } from "../GL/GLContext.js";
-import { LegacyShader } from "./LegacyShader.js";
 import { Utils } from "../Utils/Utils.js";
 import { UUID } from "../Utils/UUID.js";
 import "../../../gl-matrix-min.js";
@@ -33,7 +32,7 @@ export class Texture {
     const gl = GLContext.getInstance().gl;
     this.webGLTexture = gl.createTexture();
     this.name = name;
-    this.image = imageMap;
+    this.imageMap = imageMap;
     this.width = width;
     this.height = height;
     this.format = internalFormat;
@@ -41,7 +40,12 @@ export class Texture {
     this.texelType = texelType;
     this.interpolation = interpolation;
     this.clamping = clamping;
-    this._uuid = UUID.generate();
+
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
 
     this.init();
   }
@@ -57,13 +61,13 @@ export class Texture {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 
-    if (this.image == null) {
+    if (this.imageMap == null) {
       console.info(
         "No image provided for texture:",
         this.name,
         "using default pink texture."
       );
-      this.image = Utils.getPinkStartTexture(this.width, this.height);
+      this.imageMap = Utils.getPinkStartTexture(this.width, this.height);
     }
 
     // args: target, mipmap level, internal format, width, height, border (always 0), format, type, data
@@ -76,7 +80,7 @@ export class Texture {
       0,
       gl[this.texelFormat],
       gl[this.texelType],
-      this.image
+      this.imageMap
     ); // mipmapping
     // gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(
@@ -111,8 +115,12 @@ export class Texture {
     gl.bindTexture(gl.TEXTURE_2D, this.webGLTexture);
   };
 
-  equals(other) {
-    if (!(other instanceof Texture)) return false;
-    return this._uuid === other._uuid;
-  }
+  unbindTexture = () => {
+    const gl = GLContext.getInstance().gl;
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  };
+
+  equals = (other) => {
+    return other instanceof Texture && this.getUUID() === other.getUUID();
+  };
 }

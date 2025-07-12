@@ -4,21 +4,36 @@ import { UUID } from "../Utils/UUID.js";
 import "../../../gl-matrix-min.js";
 
 export class Camera {
-  constructor(name = "Camera") {
+  constructor(
+    name = "Camera",
+    transform = null,
+    target = null,
+    up = null,
+    fov = 45,
+    aspectRatio = 1,
+    near = 0.1,
+    far = 100
+  ) {
     this.name = name;
-    this.transform = new Transform();
-    this.target = [0, 0, -1];
-    this.up = [0, 1, 0];
-    this.fov = 45; // Field of view in degrees
-    this.aspectRatio = 1; // Width / Height
-    this.near = 0.1; // Near clipping plane
-    this.far = 100; // Far clipping plane
-    this._uuid = UUID.generate();
+    this.transform = transform || new Transform();
+    this.target = target || [0, 0, 1]; // means the camera looks towards the negative Z-axis
+    this.up = up || [0, 1, 0]; // Up direction of the camera, typically Y-axis
+    this.fov = fov;
+    this.aspectRatio = aspectRatio;
+    this.near = near;
+    this.far = far;
+
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
   }
 
   getViewMatrix() {
     const mat4 = glMatrix.mat4;
     const position = this.transform.getTranslation();
+
     return mat4.lookAt(mat4.create(), position, this.target, this.up);
   }
 
@@ -36,4 +51,8 @@ export class Camera {
       this.far
     );
   }
+
+  equals = (other) => {
+    return other instanceof Camera && this.getUUID() === other.getUUID();
+  };
 }

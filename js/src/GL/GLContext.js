@@ -63,20 +63,14 @@ export class GLContext {
       antialias: true,
       powerPreference: "default",
     });
-    // set antialiasing to MSAA
-    this.gl.getContextAttributes().antialias = true;
 
     if (!this.gl) {
       throw new Error("WebGL2 not supported");
     }
-    // hint for fragment shader derivatives
-    this.gl.hint(this.gl.FRAGMENT_SHADER_DERIVATIVE_HINT, this.gl.NICEST);
 
     // enable WebGL2 extensions for float textures and blending
     this.gl.getExtension("EXT_color_buffer_float"); // enable float textures
     this.gl.getExtension("EXT_float_blend"); // enable float blending
-    this.gl.getExtension("OES_texture_float_nearest"); // enable linear filtering for float textures, alternative: nearest
-    this.gl.getExtension("OES_texture_float"); // enable float textures
 
     // get HTML stats element
     this.stats = {
@@ -248,6 +242,7 @@ export class GLContext {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
     for (const shader of shaderList) {
+      if (!shader.program) continue;
       gl.useProgram(shader.program);
       gl.uniform2fv(
         gl.getUniformLocation(shader.program, "uResolution"),
@@ -552,20 +547,20 @@ export class GLContext {
     this.updateGlobalUniform("uView", this.uView);
     this.updateGlobalUniform("uProjection", this.uProjection);
 
-    for (const shader of this.shaderList) {
-      if (this.hasSliderChanged) {
-        const kernel = Utils.gaussKernel1D(kernelSize, sigma, true);
-        blurShader.updateUniform("uKernel", "1fv", kernel);
-        blurShader.updateUniform("uKernelSize", "1i", kernelSize);
-        this.hasSliderChanged = false;
-      }
-    }
-    if (this.hasCheckboxChanged) {
-      topoShader.updateUniform("uCheckbox", "bool", checkbox.checked);
-      this.hasCheckboxChanged = false;
-    }
+    // for (const shader of this.shaderList) {
+    //   if (this.hasSliderChanged) {
+    //     const kernel = Utils.gaussKernel1D(kernelSize, sigma, true);
+    //     blurShader.updateUniform("uKernel", "1fv", kernel);
+    //     blurShader.updateUniform("uKernelSize", "1i", kernelSize);
+    //     this.hasSliderChanged = false;
+    //   }
+    // }
+    // if (this.hasCheckboxChanged) {
+    //   topoShader.updateUniform("uCheckbox", "bool", checkbox.checked);
+    //   this.hasCheckboxChanged = false;
+    // }
 
-    this.gl.useProgram(null);
+    // this.gl.useProgram(null);
 
     const cycle = Math.floor(this.tick / this.timestep);
     const t0 = this.stats.t0 / 1000; // convert to seconds

@@ -55,12 +55,16 @@ export class Geometry {
     gl.bindVertexArray(null);
 
     this.halfEdgeMesh = new HalfEdgeMesh();
-    this.init();
+    this.init(attributes, indexBuffer);
   }
 
-  init(attributes, indexBuffer) {
+  init(attributes = null, indexBuffer = null) {
     const gl = GLContext.getInstance().gl;
     this.geomVAO = new VAO("Geometry_VAO", attributes, "DYNAMIC_DRAW");
+
+    if (attributes !== null && attributes instanceof Array) {
+      this.prepareAttributes(attributes);
+    }
 
     this.wireframeAttributes = new Map();
     this.wireframeVAO = new VAO(
@@ -70,7 +74,12 @@ export class Geometry {
     );
 
     gl.bindVertexArray(this.geomVAO.vao);
-    console.log("Binding vertex buffer:", attributes);
+    if (indexBuffer) {
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+      this.geomVAO.indexBuffer = indexBuffer;
+    } else {
+      this.geomVAO.indexBuffer = null;
+    }
   }
 
   bind(vao = this.geomVAO) {

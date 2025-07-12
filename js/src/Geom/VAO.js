@@ -9,7 +9,13 @@ export class VAO {
     this.buffer = null;
     this.attributes = attributes || new Map();
     this.drawMode = drawMode;
-    this._uuid = UUID.generate();
+
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
+
     this.init();
   }
 
@@ -88,8 +94,7 @@ export class VAO {
     return data;
   }
 
-  equals(other) {
-    if (!(other instanceof VAO)) return false;
-    return this._uuid === other._uuid;
-  }
+  equals = (other) => {
+    return other instanceof VAO && this.getUUID() === other.getUUID();
+  };
 }

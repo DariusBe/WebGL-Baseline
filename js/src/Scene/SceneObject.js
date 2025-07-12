@@ -22,7 +22,14 @@ export class SceneObject {
     this.materials = new Map(material ? [[material.name, material]] : []);
     this.activeMaterial = material || null;
     this.transform = transform || new Transform();
-    this._uuid = UUID.generate();
+
+    if (this.materials.size > 0) {
+      // If materials are provided, set the first one as active
+      this.activeMaterial = this.materials.values().next().value;
+      this.activeMaterial.use();
+      this.updateTransformUniforms();
+    }
+
     if (
       this.activeMaterial != null &&
       this.activeMaterial instanceof Material
@@ -30,6 +37,12 @@ export class SceneObject {
       this.activeMaterial.use();
     }
     this.createWireframeShader();
+
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
   }
 
   static createFromOBJ = async (objSrc, mtlSrc = null) => {
@@ -120,7 +133,16 @@ export class SceneObject {
     this.children.push(child);
   }
 
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index > -1) {
+      this.children.splice(index, 1);
+    } else {
+      console.warn("Child not found in children array.");
+    }
+  }
+
   equals(other) {
-    return other instanceof SceneObject && this._uuid === other._uuid;
+    return other instanceof SceneObject && this.getUUID() === other.getUUID();
   }
 }

@@ -1,4 +1,5 @@
 import { ModelOBJ } from "../Geom/ModelOBJ.js";
+import { Attribute } from "../GL/Attribute.js";
 
 export class Utils {
   /**
@@ -111,30 +112,30 @@ export class Utils {
   /**
    * Positions for a quad covering the entire canvas.
    */
-  static canvasPoints = new Float32Array([
-    // QUAD bottom left
-    -1.0, -1.0, 0.0,
-    // QUAD bottom right
-    1.0, -1.0, 0.0,
-    // QUAD top right
-    1.0, 1.0, 0.0,
-    // QUAD top left
-    -1.0, 1.0, 0.0,
-  ]);
+  // static canvasPoints = new Float32Array([
+  //   // QUAD bottom left
+  //   -1.0, -1.0, 0.0,
+  //   // QUAD bottom right
+  //   1.0, -1.0, 0.0,
+  //   // QUAD top right
+  //   1.0, 1.0, 0.0,
+  //   // QUAD top left
+  //   -1.0, 1.0, 0.0,
+  // ]);
 
   /**
    * Quad texture coordinates for a full screen quad.
    */
-  static quadTextCoords = new Float32Array([
-    // QUAD bottom left
-    0.0, 0.0,
-    // QUAD bottom right
-    1.0, 0.0,
-    // QUAD top right
-    1.0, 1.0,
-    // QUAD top left
-    0.0, 1.0,
-  ]);
+  // static quadTextCoords = new Float32Array([
+  //   // QUAD bottom left
+  //   0.0, 0.0,
+  //   // QUAD bottom right
+  //   1.0, 0.0,
+  //   // QUAD top right
+  //   1.0, 1.0,
+  //   // QUAD top left
+  //   0.0, 1.0,
+  // ]);
 
   /**
    * #### A Float32Array containing a the coordinates of a flat canvas plane and their texture coordinates in the following layout:
@@ -142,16 +143,16 @@ export class Utils {
    * ---
    * [x][y][z]-[u][v] (5 BYTES per line (Stride), 3 BYTE Offset for aTexCoords)
    */
-  static canvasAttribs = new Float32Array([
-    // QUAD bottom left (xyz, uv)
-    -1.0, -1.0, 0.0, 0.0, 0.0,
-    // QUAD bottom right (xyz, uv)
-    1.0, -1.0, 0.0, 1.0, 0.0,
-    // QUAD top right (xyz, uv)
-    1.0, 1.0, 0.0, 1.0, 1.0,
-    // QUAD top left (xyz, uv)
-    -1.0, 1.0, 0.0, 0.0, 1.0,
-  ]);
+  // static canvasAttribs = new Float32Array([
+  //   // QUAD bottom left (xyz, uv)
+  //   -1.0, -1.0, 0.0, 0.0, 0.0,
+  //   // QUAD bottom right (xyz, uv)
+  //   1.0, -1.0, 0.0, 1.0, 0.0,
+  //   // QUAD top right (xyz, uv)
+  //   1.0, 1.0, 0.0, 1.0, 1.0,
+  //   // QUAD top left (xyz, uv)
+  //   -1.0, 1.0, 0.0, 0.0, 1.0,
+  // ]);
 
   /**
    * #### A Float32Array containing a the coordinates of a flat canvas plane and their texture coordinates in the following layout:
@@ -161,7 +162,7 @@ export class Utils {
    */
   static canvasAttribsWithNormals = new Float32Array([
     // QUAD bottom left
-    // (xyz,            uv,           normal,           rgb)
+    // (xyz,            uv,           normal,             rgb)
     -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0, 0.0,
     // QUAD bottom right
     1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0,
@@ -170,6 +171,49 @@ export class Utils {
     // QUAD top left (xyz, uv, normal, rgb)
     -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0,
   ]);
+
+  static canvasAttributes = [
+    new Attribute(
+      "aPosition",
+      0,
+      3,
+      "FLOAT",
+      false,
+      11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+      0, // Offset for position
+      new Float32Array(this.canvasAttribsWithNormals)
+    ),
+    new Attribute(
+      "aTexCoord",
+      1,
+      2,
+      "FLOAT",
+      false,
+      11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+      3 * 4, // Offset for texture coordinates
+      new Float32Array(this.canvasAttribsWithNormals)
+    ),
+    new Attribute(
+      "aNormal",
+      2,
+      3,
+      "FLOAT",
+      false,
+      11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+      5 * 4, // Offset for normal
+      new Float32Array(this.canvasAttribsWithNormals)
+    ),
+    new Attribute(
+      "aColor",
+      3,
+      3,
+      "FLOAT",
+      false,
+      11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+      8 * 4, // Offset for color
+      new Float32Array(this.canvasAttribsWithNormals)
+    ),
+  ];
 
   static cubeAttribsWithNormals = new Float32Array([
     // in correct winding order

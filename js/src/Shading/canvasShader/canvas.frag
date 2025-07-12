@@ -7,12 +7,12 @@ in vec3 vNormal;
 in vec3 vColor;
 
 uniform sampler2D uSampler;
+uniform mat4 uModel;
 
-// uniform binding index = 0
+// std140
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
-    mat4 uModel;
     vec2 uResolution;
     float uTime;
     float uShowCursor;
@@ -37,8 +37,10 @@ vec4 prepareCursor(float radius, vec4 color) {
 }
 
 void main() {
-    vec4 cursor = prepareCursor(15.0, vec4(0.4471, 0.4471, 0.4471, 0.5));
+    // vec4 cursor = prepareCursor(15.0, vec4(0.4471, 0.4471, 0.4471, 0.5));
 
+    vec4 test = sin(uTime) * vec4(0.5, 0.5, 0.5, 1.0);
     vec4 tex = texture(uSampler, vTexCoord);
-    fragColor = vec4(tex.bbb * 2.0, 1.0) + cursor;
+
+    fragColor = vec4(tex.rgb, 1.0);
 }

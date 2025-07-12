@@ -1,5 +1,5 @@
 import { Camera } from "./src/Scene/Camera.js";
-import { RenderTarget } from "./RenderTarget.js";
+import { RenderTarget } from "./src/GL/RenderTarget.js";
 
 export class Viewport {
   constructor(width, height) {

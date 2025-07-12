@@ -17,7 +17,6 @@ export class Material {
     this.shaderProgram = shaderProgram;
     this.uniformData = uniformData; // Map of uniform names to Uniform objects
     this.texture = texture;
-    this._uuid = UUID.generate();
 
     const gl = GLContext.getInstance().gl;
     if (this.shaderProgram == null) {
@@ -32,6 +31,44 @@ export class Material {
     if (this.uniformData == null) {
       this.uniformData = new Map();
     }
+    if (this.texture instanceof Texture) {
+      this.texture.bindTexture();
+    }
+
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
+  }
+
+  setTexture(texture, unit = 0, uniformName = "uSampler") {
+    const gl = GLContext.getInstance().gl;
+    if (this.getUniformLocation(uniformName) === null) {
+      console.warn(
+        `Uniform ${uniformName} not found in program ${this.shaderProgram.program}`
+      );
+    }
+    this.setUniform(new Uniform(uniformName, "1i", unit));
+
+    if (texture instanceof Texture) {
+      this.texture = texture;
+      // this.texture.bindTexture(unit);
+    }
+  }
+
+  bindTexture(unit = 0) {
+    if (this.texture instanceof Texture && unit !== null) {
+      this.texture.bindTexture(unit);
+    } else if (unit === null) {
+      this.texture.unbindTexture();
+    } else {
+      console.warn("No texture to bind for material:", this.name);
+    }
+  }
+
+  unbindTexture() {
+    this.texture.unbindTexture();
   }
 
   /**
@@ -125,8 +162,7 @@ export class Material {
       console.log("Uniform", name, ":", this.uniformData[name].value);
   }
 
-  equals(other) {
-    if (!(other instanceof Material)) return false;
-    return this._uuid === other._uuid;
-  }
+  equals = (other) => {
+    return other instanceof Material && this.getUUID() === other.getUUID();
+  };
 }

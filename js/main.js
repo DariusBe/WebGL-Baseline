@@ -6,14 +6,52 @@ import { SceneObject } from "./src/Scene/SceneObject.js";
 import { Scene } from "./src/Scene/Scene.js";
 import { Renderer } from "./src/Scene/Renderer.js";
 import { Camera } from "./src/Scene/Camera.js";
+import { RenderTarget } from "./src/GL/RenderTarget.js";
+import { Attribute } from "./src/GL/Attribute.js";
 import "../gl-matrix-min.js";
+import { Geometry } from "./src/Geom/Geometry.js";
+import { ShaderProgram } from "./src/GL/ShaderProgram.js";
 
 /* Globals */
 const glContext = GLContext.getInstance();
 const gl = glContext.gl;
 const scene = new Scene();
+const pi = Math.PI;
 
-// setting up mars
+// PLANE
+const plane = await SceneObject.createFromOBJ(
+  "resources/models/plane.obj",
+  "resources/models/plane.mtl"
+);
+const canvasTex = new Texture(
+  "PlaneTexture",
+  await Utils.loadImage("resources/textures/UVTestMapText.png", 2048, 2048),
+  gl.canvas.width,
+  gl.canvas.height,
+  "RGBA16F",
+  "LINEAR",
+  "RGBA",
+  "FLOAT",
+  "CLAMP_TO_EDGE"
+);
+const canvVS = await Utils.readShaderFile(
+  "js/src/Shading/canvasShader/canvas.vert"
+);
+const canvFS = await Utils.readShaderFile(
+  "js/src/Shading/canvasShader/canvas.frag"
+);
+const planeMaterial = new Material(
+  "PlaneMaterial",
+  new ShaderProgram(canvVS, canvFS, "CanvasShaderProgram"),
+  null,
+  null
+);
+plane.addMaterial(planeMaterial, false);
+plane.activeMaterial = planeMaterial;
+plane.activeMaterial.setTexture(canvasTex, 0, "uSampler");
+// scene.add(plane);
+
+// MARS
 const mars = await SceneObject.createFromOBJ(
   "resources/models/planet.obj",
   "resources/models/planet.mtl"
@@ -35,7 +73,7 @@ mars.addMaterial(marsMaterial, false);
 mars.activeMaterial = marsMaterial;
 scene.add(mars);
 
-// setting up europa
+// EUROPA
 const europaTex = new Texture(
   "EuropaTexture",
   await Utils.loadImage("resources/textures/europa.png", 1024, 512),
@@ -52,13 +90,14 @@ const europa = await SceneObject.createFromOBJ(
   "resources/models/planet.mtl"
 );
 europa.transform.setScale(0.25, 0.25, 0.25);
-europa.transform.setTranslation(2, 0.0, 0.0);
+europa.transform.setTranslation(5, 0.0, 0.0);
 const europaMaterial = new Material("EuropaMaterial", null, null, europaTex);
 europa.addMaterial(europaMaterial, false);
 europa.activeMaterial = europaMaterial;
+europa.activeMaterial.setTexture(europaTex, 0, "uSampler");
 mars.addChild(europa);
 
-// setting up moon
+// MOON
 const moonTex = new Texture(
   "MoonTexture",
   await Utils.loadImage("resources/textures/moon.png", 1024, 512),
@@ -75,7 +114,7 @@ const moon = await SceneObject.createFromOBJ(
   "resources/models/planet.mtl"
 );
 moon.transform.setScale(0.4, 0.4, 0.4);
-moon.transform.setTranslation(2.0, 0.0, 0.0);
+moon.transform.setTranslation(2.0, 0.0, 2.0);
 const moonMaterial = new Material("MoonMaterial", null, null, moonTex);
 moon.addMaterial(moonMaterial, false);
 moon.activeMaterial = moonMaterial;
@@ -83,20 +122,36 @@ europa.addChild(moon);
 
 // setting up renderer
 const renderer = new Renderer();
-
 const mainCamera = new Camera("mainCamera");
-mainCamera.transform.setTranslation(0, 0, 2); // Default position
+mainCamera.transform.setTranslation(0, 0, -5); // Default position
+mainCamera.transform.setRotation(0, Math.PI, 0); // Default rotation
+mainCamera.fov = 45; // Default field of view
+
+// create an FBO
+const renderTarget = new RenderTarget(
+  gl.canvas.width,
+  gl.canvas.height,
+  "RenderTarget",
+  canvasTex
+);
 
 // animate;
 const animate = () => {
   glContext.updateUniforms();
-  mars.transform.rotate(0, Math.PI * -0.0005, Math.PI * -0.000005);
+  mars.transform.rotate(0, pi * -0.0005, pi * -0.000005);
 
-  europa.transform.rotate(0, Math.PI * 0.002, Math.PI * 0.0000012);
+  europa.transform.rotate(0, pi * 0.002, pi * 0.0000012);
 
-  moon.transform.rotate(0, Math.PI * -0.003, 0);
+  moon.transform.rotate(0, pi * -0.003, 0);
 
-  renderer.render(scene, mainCamera);
+  mainCamera.transform.rotate(0, pi * 0.005, 0);
+
+  renderer.render(scene, mainCamera, renderTarget, plane);
+
+  // scene.add(plane); // Add plane to the scene for rendering
+  // renderer.render(scene, mainCamera, null);
+  // scene.remove(plane); // Remove plane from the scene after rendering
+
   requestAnimationFrame(animate);
 };
 animate();
@@ -117,5 +172,5 @@ animate();
 //   link.click();
 //   canvas.width = cwidth;
 //   canvas.height = cheight;
-//   gl.viewport(0, 0, cwidth, cheight);
+//   gl.viewport(0, 0, cwidth, cheight);w
 // });

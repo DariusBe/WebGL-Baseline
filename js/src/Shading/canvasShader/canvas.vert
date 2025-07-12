@@ -9,12 +9,14 @@ layout(location = 3) in vec3 aColor;
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
-    mat4 uModel;
     vec2 uResolution;
     float uTime;
     float uShowCursor;
     vec4 uMouse;
 };
+
+uniform sampler2D uSampler;
+uniform mat4 uModel;
 
 out vec3 vPosition;
 out vec2 vTexCoord;
@@ -66,5 +68,5 @@ void main() {
     vNormal = aNormal;
     vColor = aColor;
 
-    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    gl_Position = vec4(aPosition, 1.0);
 }
