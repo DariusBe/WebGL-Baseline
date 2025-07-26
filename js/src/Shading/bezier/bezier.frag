@@ -3,18 +3,10 @@ precision highp float;
 
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
-#define RED vec4(1.0, 0.0, 0.0, 1.0)
-#define ORANGE vec4(1.0, 0.5, 0.0, 1.0)
-#define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
 #define PI 3.14159265359
 
 in vec3 vPosition;
-in vec2 vTexCoord;
-in vec3 vNormal;
-in vec3 vColor;
-
-uniform sampler2D uSampler0;
-uniform sampler2D uSampler1;
+in vec4 vColor;
 
 uniform mat4 uModel;
 
@@ -46,19 +38,8 @@ vec4 prepareCursor(float radius, vec4 color) {
 }
 
 void main() {
-    vec4 tex1 = texture(uSampler0, vTexCoord); // solid pass
-    vec4 tex2 = texture(uSampler1, vTexCoord); // wireframe pass
+    float centerDist = length(gl_PointCoord - 0.5);
+    float radius = 0.25;
 
-    // Show solid pass only
-    fragColor = tex1;
-
-    // // Show wireframe pass only
-    fragColor = tex2;
-
-    // // Show wireframe alpha channel
-    // fragColor = vec4(tex2.aaa, 1.0);
-
-    // // Show both with additive blend
-    vec4 cursor = prepareCursor(150.0, BLACK);
-    fragColor = mix(tex1, BLACK, tex2.a);
+    fragColor = vec4(vColor * step(centerDist, radius));
 }

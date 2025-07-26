@@ -9,6 +9,13 @@ import { Utils } from "../Utils/Utils.js";
 import { UUID } from "../Utils/UUID.js";
 import "../../../gl-matrix-min.js";
 
+const wireFrameVertCode = await Utils.readShaderFile(
+  "js/src/Shading/wireframe/wireframe.vert"
+);
+const wireFrameFragCode = await Utils.readShaderFile(
+  "js/src/Shading/wireframe/wireframe.frag"
+);
+
 export class SceneObject {
   constructor(
     name = "newSceneObject",
@@ -21,6 +28,8 @@ export class SceneObject {
     this.geometry = geometry || new Geometry();
     this.materials = new Map(material ? [[material.name, material]] : []);
     this.activeMaterial = material || null;
+    this.solidMaterial = null;
+    this.wireframeMaterial = null;
     this.transform = transform || new Transform();
 
     if (this.materials.size > 0) {
@@ -36,7 +45,8 @@ export class SceneObject {
     ) {
       this.activeMaterial.use();
     }
-    this.createWireframeShader();
+
+    this.solidMaterial = this.activeMaterial;
 
     // UUID handling
     const _uuid = UUID.generate();
@@ -45,7 +55,11 @@ export class SceneObject {
     };
   }
 
-  static createFromOBJ = async (objSrc, mtlSrc = null) => {
+  static createFromOBJ = async (
+    objSrc,
+    mtlSrc = null,
+    prepareAttribs = true
+  ) => {
     const obj = new SceneObject();
     obj.geometry.vertices = [];
     obj.geometry.vertexNormals = [];
@@ -67,7 +81,9 @@ export class SceneObject {
       obj.name = obj.geometry.objectNames[0];
     }
 
-    obj.geometry.prepareOBJAttributes();
+    if (obj.geometry.combinedGeom.length > 0 && prepareAttribs) {
+      obj.geometry.prepareOBJAttributes();
+    }
     return obj;
   };
 
@@ -92,6 +108,8 @@ export class SceneObject {
 
   addMaterial(material, setActive = false) {
     if (material instanceof Material) {
+      this.solidMaterial = material; // Set solid material
+      this.solidMaterial.name = material.name || "SolidMaterial";
       this.materials.set(material.name, material);
       if (setActive) {
         this.activeMaterial = material;
@@ -103,30 +121,36 @@ export class SceneObject {
     }
   }
 
-  showWireframe() {
-    if (!this.materials.has("WireframeMaterial")) {
+  toggleWireframe() {
+    // if wireframeMaterial exists
+    if (this.wireframeMaterial) {
+      // If wireframe material is already created, toggle it
+      if (this.activeMaterial === this.wireframeMaterial) {
+        this.activeMaterial = this.solidMaterial; // Switch back to solid material
+        console.log("Switching to solid material:", this.activeMaterial);
+      } else {
+        this.activeMaterial = this.wireframeMaterial; // Enable wireframe
+      }
+    } else {
+      // Create wireframe material if it doesn't exist
       this.createWireframeShader();
+      this.activeMaterial = this.wireframeMaterial;
     }
-    this.useMaterial("WireframeMaterial");
-    this.geometry.prepareWireframeAttributes();
-    this.geometry.wireframeVAO.bind();
   }
 
-  async createWireframeShader() {
-    let vertexSrc = await Utils.readShaderFile(
-      "./js/src/Shading/wireframe/wireframe.vert"
-    );
-    let fragmentSrc = await Utils.readShaderFile(
-      "./js/src/Shading/wireframe/wireframe.frag"
-    );
-    const wireframeMaterial = new Material(
+  createWireframeShader() {
+    this.wireframeMaterial = new Material(
       "WireframeMaterial",
-      new ShaderProgram(vertexSrc, fragmentSrc, "WireframeShaderProgram")
+      new ShaderProgram(
+        wireFrameVertCode,
+        wireFrameFragCode,
+        "WireframeShaderProgram"
+      )
     );
-    wireframeMaterial.setUniform(
+    this.wireframeMaterial.setUniform(
       new Uniform("uModel", "mat4", this.transform.matrix)
     );
-    this.materials.set(wireframeMaterial.name, wireframeMaterial);
+    this.materials.set(this.wireframeMaterial.name, this.wireframeMaterial);
   }
 
   addChild(child) {

@@ -95,6 +95,8 @@ void main() {
     // if (textureColor.a < 0.1) {
     //     fragColor = lambert;
     // } else {
-    fragColor = textureColor; // * lambert;
+
+    fragColor = vec4(textureColor.rgb, 1.0); // * lambert;
     // }
+    // fragColor = vec4(0.0, 1.0, 0.0, 1.0);
 }

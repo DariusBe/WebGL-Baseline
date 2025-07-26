@@ -26,9 +26,15 @@ export class Geometry {
   texCoords = [];
   vertexNormals = [];
   faces = [];
-  faceVertices = [];
+  faceVertices = []; // for triangle-arranged vertices
+  lineVertices = []; // for line-arranged vertices
   parameterSpaceVertices = [];
   smoothShading = null;
+
+  primitiveCount = this.faces.length * 3; // Number of primitives (triangles) in the geometry
+
+  // Geometry for wireframe rendering consisting of vertices and barycentric coordinates
+  wireframeGeom = []; // Geometry for wireframe rendering
 
   // Add half-edge mesh property
   halfEdgeMesh = null;
@@ -84,6 +90,10 @@ export class Geometry {
 
   bind(vao = this.geomVAO) {
     vao.bind();
+  }
+
+  unbind(vao = this.geomVAO) {
+    vao.unbind();
   }
 
   /* Prepare vertex attributes for the geometry.
@@ -289,6 +299,19 @@ export class Geometry {
       this.mtl_data = await this.parseMTL(mtl_src, src, verbose);
     }
 
+    for (const [lineIndex, line] of Object.entries(this.lineElements)) {
+      // Process each line element
+      // console.warn(lineIndex, "Line Element:", line);
+      let v1_location = line[0] - 1; // Convert to zero-based index
+      let v2_location = line[1] - 1; // Convert to zero-based index
+      // Create vertices for the line
+      const lineSegment = [
+        this.vertices[v1_location],
+        this.vertices[v2_location],
+      ];
+      this.lineVertices.push(...lineSegment[0], ...lineSegment[1]);
+    }
+
     for (const face in Object.entries(this.faces)) {
       // f v_1/X/X     v_2/X/X     v_3/X/X
       let v1_location = this.faces[face][0][0] - 1;
@@ -365,26 +388,33 @@ export class Geometry {
         }
       }
 
+      const barycentric_1 = [1.0, 0.0, 0.0];
+      const barycentric_2 = [0.0, 1.0, 0.0];
+      const barycentric_3 = [0.0, 0.0, 1.0];
+
       const rgb = [colR, colG, colB];
       this.combinedGeom.push(
         ...v_1,
         ...vt_1,
         ...nor_a,
         ...rgb,
+        ...barycentric_1,
 
         ...v_2,
         ...vt_2,
         ...nor_b,
         ...rgb,
+        ...barycentric_2,
 
         ...v_3,
         ...vt_3,
         ...nor_c,
-        ...rgb
+        ...rgb,
+        ...barycentric_3
       );
       this.faceVertices.push([v_3, v_2, v_1]);
     }
-    this.buildHalfEdgeMesh();
+    // this.buildHalfEdgeMesh();
     // }
 
     console.groupCollapsed("parsed OBJ-file");
@@ -437,7 +467,7 @@ export class Geometry {
           3,
           "FLOAT",
           false,
-          11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+          14 * 4, // 14 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color, 3 for barycentric)
           0, // Offset for position
           new Float32Array(this.combinedGeom)
         ),
@@ -447,7 +477,7 @@ export class Geometry {
           2,
           "FLOAT",
           false,
-          11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+          14 * 4, // 14 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color, 3 for barycentric)
           3 * 4, // Offset for texture coordinates
           new Float32Array(this.combinedGeom)
         ),
@@ -457,7 +487,7 @@ export class Geometry {
           3,
           "FLOAT",
           false,
-          11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+          14 * 4, // 14 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color, 3 for barycentric)
           5 * 4, // Offset for normal
           new Float32Array(this.combinedGeom)
         ),
@@ -467,13 +497,22 @@ export class Geometry {
           3,
           "FLOAT",
           false,
-          11 * 4, // 11 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color)
+          14 * 4, // 14 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color, 3 for barycentric)
           8 * 4, // Offset for color
+          new Float32Array(this.combinedGeom)
+        ),
+        new Attribute(
+          "aBarycentric",
+          4,
+          3,
+          "FLOAT",
+          false,
+          14 * 4, // 14 BYTES per vertex (3 for position, 2 for texture coordinates, 3 for normal, 3 for color, 3 for barycentric)
+          11 * 4, // Offset for barycentric coordinates
           new Float32Array(this.combinedGeom)
         ),
       ];
       this.prepareAttributes(defaultAttributes);
-      this.prepareWireframeAttributes();
     }
   };
 
@@ -604,43 +643,6 @@ export class Geometry {
     );
   };
 
-  prepareWireframeAttributes = () => {
-    if (this.attributeList.has("aPosition")) {
-      // const aPosition = this.attributeList.get("aPosition");
-      // const aNormal = this.attributeList.get("aNormal");
-      // const aColor = this.attributeList.get("aColor");
-
-      // aNormal.location = 1;
-      // aColor.location = 2;
-      // console.error("combined", ...this.combinedGeom.flat().slice(0, 9));
-      // console.error("vertices", ...this.vertices.flat().slice(0, 9));
-
-      const aPosition = new Attribute(
-        "aPosition",
-        0,
-        3,
-        "FLOAT",
-        false,
-        3 * 4, // 3 BYTES per vertex (x, y, z)
-        0, // Offset for position
-        new Float32Array(this.faceVertices.flat().flat())
-      );
-
-      const wireframeAttributes = new Map([
-        ["aPosition", aPosition],
-        // ["aNormal", aNormal],
-        // ["aColor", aColor],
-      ]);
-
-      this.wireframeVAO = new VAO(
-        "Wireframe_VAO",
-        wireframeAttributes,
-        "STATIC_DRAW"
-      );
-      // console.log(...this.wireframeVAO.getBufferContent().slice(0, 9));
-    }
-  };
-
   // Add method to build half-edge mesh after OBJ parsing
   buildHalfEdgeMesh = () => {
     if (this.vertices.length === 0 || this.faces.length === 0) {
@@ -657,7 +659,7 @@ export class Geometry {
       this.vertexNormals
     );
 
-    console.log(
+    console.info(
       `Built half-edge mesh with ${this.halfEdgeMesh.vertices.length} vertices, ${this.halfEdgeMesh.faces.length} faces, and ${this.halfEdgeMesh.halfEdges.length} half-edges.`
     );
   };

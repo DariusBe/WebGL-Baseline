@@ -31,6 +31,7 @@ export class Texture {
   ) {
     const gl = GLContext.getInstance().gl;
     this.webGLTexture = gl.createTexture();
+    this.webGLTexture.name = name; // for debugging purposes
     this.name = name;
     this.imageMap = imageMap;
     this.width = width;
@@ -58,17 +59,15 @@ export class Texture {
     gl.bindTexture(gl.TEXTURE_2D, this.webGLTexture);
 
     // rotate texture by 90 degrees if not specified otherwise
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    // gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 
-    if (this.imageMap == null) {
-      console.info(
-        "No image provided for texture:",
-        this.name,
-        "using default pink texture."
-      );
-      this.imageMap = Utils.getPinkStartTexture(this.width, this.height);
-    }
+    // if (this.imageMap == null) {
+    //   // Only assign a pink texture for debug, not for FBOs!
+    //   if (!this.isFBOTexture) {
+    //     this.imageMap = Utils.getPinkStartTexture(this.width, this.height);
+    //   }
+    // }
 
     // args: target, mipmap level, internal format, width, height, border (always 0), format, type, data
     gl.texImage2D(
@@ -80,9 +79,12 @@ export class Texture {
       0,
       gl[this.texelFormat],
       gl[this.texelType],
-      this.imageMap
-    ); // mipmapping
+      this.imageMap // should be null for FBOs!
+    );
+
+    // mipmapping
     // gl.generateMipmap(gl.TEXTURE_2D);
+
     gl.texParameteri(
       gl.TEXTURE_2D,
       gl.TEXTURE_MIN_FILTER,

@@ -3,10 +3,12 @@ precision highp float;
 
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
+#define ORANGE vec4(1.0, 0.75, 0.3, 1.0)
+#define RED vec4(1.0, 0.0, 0.0, 0.5)
 
 in vec3 vPosition;
-// in vec3 vNormal;
-// in vec3 vColor;
+in vec3 vColor;
+in vec3 vBarycentric;
 
 uniform sampler2D uSampler;
 uniform mat4 uModel;
@@ -23,6 +25,27 @@ layout(std140) uniform GlobalUniforms {
 
 out vec4 fragColor;
 
+float edgeFactor(float minWidth, float maxWidth) {
+    vec3 d = fwidth(vBarycentric);
+    float minBary = min(min(vBarycentric.x, vBarycentric.y), vBarycentric.z);
+    float unclampedEdge = 0.5 * min(d.x, min(d.y, d.z));
+    float edge = clamp(unclampedEdge, minWidth, maxWidth);
+    return 1.0 - smoothstep(0.0, edge, minBary);
+}
+
+vec4 wireframe(vec4 color) {
+    float minWidth = 0.025; // Minimum allowed width (in pixels)
+    float maxWidth = 0.5; // Maximum allowed width (in pixels)
+    float alpha = edgeFactor(minWidth, maxWidth);
+    // apply alpha to color
+    return vec4(color.rgb, alpha);
+}
+
 void main() {
-    fragColor = BLACK;
+    if (any(lessThan(vBarycentric, vec3(0.05)))) {
+        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+    else {
+        fragColor = vec4(0.5, 0.5, 0.5, 0.0);
+    }
 }

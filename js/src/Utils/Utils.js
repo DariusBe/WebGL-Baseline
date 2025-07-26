@@ -13,6 +13,10 @@ export class Utils {
       const img = new Image();
       img.addEventListener("load", () => resolve(img));
       img.src = src;
+
+      // flip image vertically
+      img.style.transform = "scaleY(-1)";
+
       // resize image to 128 x 128
       return img;
     });

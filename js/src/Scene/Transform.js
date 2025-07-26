@@ -24,6 +24,7 @@ export class Transform {
     mat4.multiply(this.matrix, translationMatrix, rotationMatrix);
     mat4.multiply(this.matrix, this.matrix, scaleMatrix);
   }
+
   translate(x, y, z) {
     this.translation[0] += x;
     this.translation[1] += y;

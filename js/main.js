@@ -11,6 +11,11 @@ import { Attribute } from "./src/GL/Attribute.js";
 import "../gl-matrix-min.js";
 import { Geometry } from "./src/Geom/Geometry.js";
 import { ShaderProgram } from "./src/GL/ShaderProgram.js";
+import { Gizmo } from "./src/Scene/SceneExtras.js";
+import { Lamp } from "./src/Scene/Lamp.js";
+import { Grid } from "./src/Scene/SceneExtras.js";
+
+import { Bezier } from "./src/Scene/SceneExtras.js";
 
 /* Globals */
 const glContext = GLContext.getInstance();
@@ -18,38 +23,15 @@ const gl = glContext.gl;
 const scene = new Scene();
 const pi = Math.PI;
 
-// PLANE
-const plane = await SceneObject.createFromOBJ(
-  "resources/models/plane.obj",
-  "resources/models/plane.mtl"
-);
-const canvasTex = new Texture(
-  "PlaneTexture",
-  await Utils.loadImage("resources/textures/UVTestMapText.png", 2048, 2048),
-  gl.canvas.width,
-  gl.canvas.height,
-  "RGBA16F",
-  "LINEAR",
-  "RGBA",
-  "FLOAT",
-  "CLAMP_TO_EDGE"
-);
-const canvVS = await Utils.readShaderFile(
-  "js/src/Shading/canvasShader/canvas.vert"
-);
-const canvFS = await Utils.readShaderFile(
-  "js/src/Shading/canvasShader/canvas.frag"
-);
-const planeMaterial = new Material(
-  "PlaneMaterial",
-  new ShaderProgram(canvVS, canvFS, "CanvasShaderProgram"),
-  null,
-  null
-);
-plane.addMaterial(planeMaterial, false);
-plane.activeMaterial = planeMaterial;
-plane.activeMaterial.setTexture(canvasTex, 0, "uSampler");
-// scene.add(plane);
+const lamp = new Lamp("Sun", "lamp", 1.0);
+// const lampGizmo = new Gizmo("LampGizmo", "lamp");
+// lampGizmo.transform.setTranslation(0.75, 0, 0);
+// lampGizmo.transform.setScale(0.025, 0.025, 0.025);
+lamp.transform.setTranslation(0.75, 0, 0);
+// scene.add(lamp);
+
+// const grid = new Grid("Grid", 10.0, 100.0);
+// scene.add(grid);
 
 // MARS
 const mars = await SceneObject.createFromOBJ(
@@ -70,13 +52,15 @@ const marsTex = new Texture(
 );
 const marsMaterial = new Material("MarsMaterial", null, null, marsTex);
 mars.addMaterial(marsMaterial, false);
+mars.solidMaterial = marsMaterial; // Set solid material
 mars.activeMaterial = marsMaterial;
+mars.name = "Mars";
 scene.add(mars);
 
-// EUROPA
-const europaTex = new Texture(
-  "EuropaTexture",
-  await Utils.loadImage("resources/textures/europa.png", 1024, 512),
+// EARTH
+const earthTex = new Texture(
+  "EarthTexture",
+  await Utils.loadImage("resources/textures/earth.png", 1024, 512),
   1024,
   512,
   "RGBA16F",
@@ -85,17 +69,19 @@ const europaTex = new Texture(
   "FLOAT",
   "CLAMP_TO_EDGE"
 );
-const europa = await SceneObject.createFromOBJ(
+const earth = await SceneObject.createFromOBJ(
   "resources/models/planet.obj",
   "resources/models/planet.mtl"
 );
-europa.transform.setScale(0.25, 0.25, 0.25);
-europa.transform.setTranslation(5, 0.0, 0.0);
-const europaMaterial = new Material("EuropaMaterial", null, null, europaTex);
-europa.addMaterial(europaMaterial, false);
-europa.activeMaterial = europaMaterial;
-europa.activeMaterial.setTexture(europaTex, 0, "uSampler");
-mars.addChild(europa);
+earth.transform.setScale(0.25, 0.25, 0.25);
+earth.transform.setTranslation(2.5, 0.0, 0.0);
+const earthMaterial = new Material("EarthMaterial", null, null, earthTex);
+earth.addMaterial(earthMaterial, false);
+earth.activeMaterial = earthMaterial;
+earth.solidMaterial = earthMaterial; // Set solid material
+earth.activeMaterial.setTexture(earthTex, 0, "uSampler");
+earth.name = "Earth";
+mars.addChild(earth);
 
 // MOON
 const moonTex = new Texture(
@@ -117,40 +103,85 @@ moon.transform.setScale(0.4, 0.4, 0.4);
 moon.transform.setTranslation(2.0, 0.0, 2.0);
 const moonMaterial = new Material("MoonMaterial", null, null, moonTex);
 moon.addMaterial(moonMaterial, false);
+moon.solidMaterial = moonMaterial; // Set solid material
 moon.activeMaterial = moonMaterial;
-europa.addChild(moon);
+moon.name = "Moon";
+earth.addChild(moon);
+
+// // testing Bezier Curve
+// const bezier = new Bezier("BezierCurve");
+// scene.add(bezier);
 
 // setting up renderer
 const renderer = new Renderer();
 const mainCamera = new Camera("mainCamera");
-mainCamera.transform.setTranslation(0, 0, -5); // Default position
-mainCamera.transform.setRotation(0, Math.PI, 0); // Default rotation
-mainCamera.fov = 45; // Default field of view
+mainCamera.transform.setTranslation(0, 1, -15); // Default position
+mainCamera.fov = 8; // Default field of view
 
-// create an FBO
-const renderTarget = new RenderTarget(
-  gl.canvas.width,
-  gl.canvas.height,
-  "RenderTarget",
-  canvasTex
+// Add this before creating render targets
+const devicePixelRatio = window.devicePixelRatio || 1;
+const canvasWidth = gl.canvas.clientWidth * devicePixelRatio;
+const canvasHeight = gl.canvas.clientHeight * devicePixelRatio;
+
+// Update canvas actual size
+gl.canvas.width = canvasWidth;
+gl.canvas.height = canvasHeight;
+
+// create an FBO for rendering the scene with DPR
+const solidPass = new RenderTarget(
+  canvasWidth,
+  canvasHeight,
+  "SolidFBO",
+  new Texture(
+    "SolidFBOTexture",
+    null,
+    canvasWidth,
+    canvasHeight,
+    "RGBA8",
+    "LINEAR",
+    "RGBA",
+    "UNSIGNED_BYTE",
+    "CLAMP_TO_EDGE"
+  ),
+  true
+);
+
+const wireframePass = new RenderTarget(
+  canvasWidth,
+  canvasHeight,
+  "WireframeFBO",
+  new Texture(
+    "WireframeFBOTexture",
+    null,
+    canvasWidth,
+    canvasHeight,
+    "RGBA8",
+    "LINEAR",
+    "RGBA",
+    "UNSIGNED_BYTE",
+    "CLAMP_TO_EDGE"
+  ),
+  true
 );
 
 // animate;
 const animate = () => {
   glContext.updateUniforms();
-  mars.transform.rotate(0, pi * -0.0005, pi * -0.000005);
 
-  europa.transform.rotate(0, pi * 0.002, pi * 0.0000012);
+  mars.transform.rotate(0, pi * -0.0005, 0);
+
+  earth.transform.rotate(0, pi * 0.002, pi * 0.0000012);
 
   moon.transform.rotate(0, pi * -0.003, 0);
 
-  mainCamera.transform.rotate(0, pi * 0.005, 0);
+  renderer.render(scene, mainCamera, solidPass, null, "solid");
+  renderer.render(scene, mainCamera, wireframePass, null, "wireframe");
 
-  renderer.render(scene, mainCamera, renderTarget, plane);
-
-  // scene.add(plane); // Add plane to the scene for rendering
-  // renderer.render(scene, mainCamera, null);
-  // scene.remove(plane); // Remove plane from the scene after rendering
+  // render the plane with the canvas shader
+  renderer.renderScreenQuad([
+    solidPass.targetTexture,
+    wireframePass.targetTexture,
+  ]);
 
   requestAnimationFrame(animate);
 };

@@ -10,16 +10,17 @@ export class Camera {
     target = null,
     up = null,
     fov = 45,
-    aspectRatio = 1,
     near = 0.1,
     far = 100
   ) {
     this.name = name;
     this.transform = transform || new Transform();
-    this.target = target || [0, 0, 1]; // means the camera looks towards the negative Z-axis
+    this.target = target || [0, 0, 0]; // means the camera looks towards the negative Z-axis
     this.up = up || [0, 1, 0]; // Up direction of the camera, typically Y-axis
     this.fov = fov;
-    this.aspectRatio = aspectRatio;
+    this.gl = GLContext.getInstance().gl;
+    this.canvas = this.gl.canvas;
+    this.aspectRatio = this.canvas.width / this.canvas.height;
     this.near = near;
     this.far = far;
 
@@ -33,8 +34,10 @@ export class Camera {
   getViewMatrix() {
     const mat4 = glMatrix.mat4;
     const position = this.transform.getTranslation();
+    // to get a straight view matrix, we need to look where its rotation is pointing
+    const rotation = this.transform.getRotation();
 
-    return mat4.lookAt(mat4.create(), position, this.target, this.up);
+    return mat4.lookAt(mat4.create(), position, rotation, this.up);
   }
 
   getProjectionMatrix() {
@@ -50,6 +53,19 @@ export class Camera {
       this.near,
       this.far
     );
+  }
+
+  updateProjectionMatrix() {
+    const gl = this.gl;
+    const mat4 = glMatrix.mat4;
+    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const near = 0.1;
+    const far = 1000.0;
+
+    // Convert FOV from degrees to radians if needed
+    const fovRadians = this.fov * (Math.PI / 180);
+
+    mat4.perspective(this.getProjectionMatrix(), fovRadians, aspect, near, far);
   }
 
   equals = (other) => {

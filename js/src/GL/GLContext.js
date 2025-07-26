@@ -71,6 +71,9 @@ export class GLContext {
     // enable WebGL2 extensions for float textures and blending
     this.gl.getExtension("EXT_color_buffer_float"); // enable float textures
     this.gl.getExtension("EXT_float_blend"); // enable float blending
+    // enable highest quality derivatives
+    this.gl.getExtension("EXT_shader_texture_lod"); // enable texture LOD
+    this.gl.getExtension("OES_standard_derivatives"); // enable derivatives
 
     // get HTML stats element
     this.stats = {

@@ -4,7 +4,6 @@ import { UUID } from "../Utils/UUID.js";
 
 export class VAO {
   constructor(name, attributes = [], drawMode = "STATIC_DRAW") {
-    this.name = name || `VAO ${performance.now()}`;
     this.vao = null;
     this.buffer = null;
     this.attributes = attributes || new Map();
@@ -15,6 +14,7 @@ export class VAO {
     this.getUUID = () => {
       return _uuid;
     };
+    this.name = name || "VAO" + this.getUUID();
 
     this.init();
   }

@@ -15,7 +15,8 @@ layout(std140) uniform GlobalUniforms {
     vec4 uMouse;
 };
 
-uniform sampler2D uSampler;
+uniform sampler2D uSampler0;
+uniform sampler2D uSampler1;
 uniform mat4 uModel;
 
 out vec3 vPosition;

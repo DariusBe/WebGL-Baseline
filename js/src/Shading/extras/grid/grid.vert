@@ -1,11 +1,14 @@
 #version 300 es
 precision highp float;
 
+#define BLACK vec4(0.0, 0.0, 0.0, 1.0)
+#define WHITE vec4(1.0, 1.0, 1.0, 1.0)
+#define RED vec4(1.0, 0.0, 0.0, 1.0)
+#define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
+#define ORANGE vec4(1.0, 0.647, 0.0, 1.0)
+
 layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec2 aTexCoord;
-layout(location = 2) in vec3 aNormal;
-layout(location = 3) in vec3 aColor;
-layout(location = 4) in vec3 aBarycentric;
+layout(location = 1) in vec4 aColor;
 
 uniform mat4 uModel;
 
@@ -19,12 +22,10 @@ layout(std140) uniform GlobalUniforms {
     vec4 uMouse;
 };
 out vec3 vPosition;
-out vec3 vBarycentric;
-out vec3 vColor;
+out vec4 vColor;
 
 void main() {
-    vPosition = aPosition;
-    vBarycentric = aBarycentric;
+    gl_PointSize = 25.0;
     vColor = aColor;
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
 }
