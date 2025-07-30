@@ -90,43 +90,43 @@ export class Material {
     if (uniformLocation === null) {
       return;
     }
-    if (uniform.type === "bool") {
-      gl.uniform1i(uniformLocation, uniform.value);
-    } else if (uniform.type === "1i" || uniform.type === "int") {
-      // integer
+    if (
+      uniform.type === "1i" ||
+      uniform.type === "int" ||
+      uniform.type === "bool"
+    ) {
+      // integer and boolean
       gl.uniform1i(uniformLocation, uniform.value);
     } else if (uniform.type === "1iv") {
       // integer array
       gl.uniform1iv(uniformLocation, uniform.value);
-    } else if (uniform.type === "2iv") {
+    } else if (uniform.type === "2iv" || uniform.type === "ivec2") {
       // vec2 integer array
       gl.uniform2iv(uniformLocation, uniform.value);
-    } else if (uniform.type === "3iv") {
+    } else if (uniform.type === "3iv" || uniform.type === "ivec3") {
       // vec3 integer array
       gl.uniform3iv(uniformLocation, uniform.value);
-    } else if (uniform.type === "4iv") {
+    } else if (uniform.type === "4iv" || uniform.type === "ivec4") {
       // vec4 integer array
       gl.uniform4iv(uniformLocation, uniform.value);
-    } else if (uniform.type === "1ui") {
+    } else if (uniform.type === "1ui" || uniform.type === "uint") {
       // unsigned integer
       gl.uniform1ui(uniformLocation, uniform.value);
     } else if (uniform.type === "1f") {
       gl.uniform1f(uniformLocation, uniform.value);
+      // single float
     } else if (uniform.type === "1fv") {
       // float array
       gl.uniform1fv(uniformLocation, uniform.value);
-    } else if (uniform.type === "2fv") {
+    } else if (uniform.type === "2fv" || uniform.type === "vec2") {
       // vec2 array
       gl.uniform2fv(uniformLocation, uniform.value);
-    } else if (uniform.type === "3fv") {
+    } else if (uniform.type === "3fv" || uniform.type === "vec3") {
       // vec3 array
       gl.uniform3fv(uniformLocation, uniform.value);
-    } else if (uniform.type === "4fv") {
+    } else if (uniform.type === "4fv" || uniform.type === "vec4") {
       // vec4 array
       gl.uniform4fv(uniformLocation, uniform.value);
-    } else if (uniform.type === "1i") {
-      // integer
-      gl.uniform1i(uniformLocation, uniform.value);
     } else if (uniform.type === "1iv") {
       // integer array
       gl.uniform1iv(uniformLocation, uniform.value);

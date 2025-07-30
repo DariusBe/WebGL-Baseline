@@ -38,10 +38,11 @@ const lamp = new Lamp("Sun", "lamp", 1.0);
 // lampGizmo.transform.setTranslation(0.75, 0, 0);
 // lampGizmo.transform.setScale(0.025, 0.025, 0.025);
 lamp.transform.setTranslation(0.75, 0, 0);
-// scene.add(lamp);
+scene.add(lamp);
 
-// const grid = new Grid("Grid", 10.0, 100.0);
-// scene.add(grid);
+const grid = new Grid("Grid", 100, 250, null);
+// grid.transform.setScale(0.1, 0.1, 0.1);
+scene.add(grid);
 
 // MARS
 const mars = await SceneObject.createFromOBJ(
@@ -174,17 +175,36 @@ const wireframePass = new RenderTarget(
   false
 );
 
+const gizmoPass = new RenderTarget(
+  canvasWidth,
+  canvasHeight,
+  "GizmoFBO",
+  new Texture(
+    "GizmoFBOTexture",
+    null,
+    canvasWidth,
+    canvasHeight,
+    "RGBA16F",
+    "LINEAR",
+    "RGBA",
+    "FLOAT",
+    "CLAMP_TO_EDGE"
+  ),
+  true,
+  false
+);
+
 // PICKING;
-for (const obj of scene.getHierarchyList()) {
-  console.log("Object picking UUIDs:", obj.name + ":", obj.pickingColor);
-}
+// for (const obj of scene.getHierarchyList()) {
+//   console.log("Object picking UUIDs:", obj.name + ":", obj.pickingColor);
+// }
 
 const pickObjects = (x, y) => {
   solidPass.msaaFBOCopyOver(); // Ensure MSAA data is copied over
   const pickedColor = solidPass.readPickingAt(x, y);
-  console.log("Picked color:", pickedColor);
+  // console.log("Picked color:", pickedColor);
 
-  const threshold = 0.65; // precision threshold for color comparison
+  const threshold = 0.001; // precision threshold for color comparison
   for (const obj of scene.getHierarchyList(true)) {
     if (
       // float-safe color comparison
@@ -213,20 +233,23 @@ const animate = () => {
   moon.transform.rotate(0, pi * -0.003, 0);
 
   // render the scene: solid pass, wireframe pass into FBOs
-  renderer.render(scene, mainCamera, wireframePass, null, "wireframe");
-  renderer.render(scene, mainCamera, solidPass, null, "solid");
+  renderer.render(scene, mainCamera, wireframePass, "wireframe");
+  renderer.render(scene, mainCamera, solidPass, "solid");
+  renderer.render(scene, mainCamera, gizmoPass, "gizmo");
 
   // render the solid and wireframe passes to the screen
   renderer.renderScreenQuad([
     solidPass.targetTexture,
     wireframePass.targetTexture,
+    gizmoPass.targetTexture,
   ]);
   // picking
   // pick objects on mouse click
-  // if (mouse[2] == 1.0) {
 
-  // pickObjects(mouse[0] * 2, mouse[1] * 2);
-
+  if (mouse[2] == 1.0) {
+    pickObjects(mouse[0] * 2, mouse[1] * 2);
+    glContext.uMouse[2] = 0.0; // Reset mouse click state
+  }
   requestAnimationFrame(animate);
 };
 animate();

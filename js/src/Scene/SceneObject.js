@@ -33,6 +33,13 @@ export class SceneObject {
     this.transform = transform || new Transform();
     this.selected = false; // Selection state
 
+    // UUID handling
+    const _uuid = UUID.generate();
+    this.getUUID = () => {
+      return _uuid;
+    };
+    this.pickingColor = UUID.uuidToRGBA(this);
+
     if (this.materials.size > 0) {
       // If materials are provided, set the first one as active
       this.activeMaterial = this.materials.values().next().value;
@@ -55,14 +62,6 @@ export class SceneObject {
     if (this.wireframeMaterial == null) {
       this.createWireframeShader();
     }
-
-    // UUID handling
-    const _uuid = UUID.generate();
-    this.getUUID = () => {
-      return _uuid;
-    };
-
-    this.pickingColor = UUID.uuidToRGBA(this);
   }
 
   static createFromOBJ = async (

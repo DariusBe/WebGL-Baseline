@@ -13,6 +13,7 @@ in vec3 vBarycentric;
 uniform sampler2D uSampler;
 uniform mat4 uModel;
 uniform bool uSelected;
+uniform vec4 uPickingColor;
 
 // std140, uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
@@ -32,7 +33,8 @@ mat4 scaleBy(mat4 m, float x, float y, float z) {
     return m;
 }
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec4 pickingID;
 
 float edgeFactor(float minWidth, float maxWidth) {
     vec3 d = fwidth(vBarycentric);
@@ -66,4 +68,5 @@ void main() {
         lineWidth = 0.095;
     }
     fragColor = wireframe(col, lineWidth);
+    pickingID = uPickingColor;
 }

@@ -15,10 +15,11 @@ in vec3 vColor;
 
 uniform sampler2D uSampler0;
 uniform sampler2D uSampler1;
+uniform sampler2D uSampler2;
 
 uniform mat4 uModel;
 
-// uniform binding index = 0
+// std140, uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
@@ -48,16 +49,9 @@ vec4 prepareCursor(float radius, vec4 color) {
 void main() {
     vec4 tex1 = texture(uSampler0, vTexCoord); // solid pass
     vec4 tex2 = texture(uSampler1, vTexCoord); // wireframe pass
-
-    // Show solid pass only
-    fragColor = tex1;
-
-    // // Show wireframe pass only
-    fragColor = tex2;
-
-    // // Show wireframe alpha channel
-    // fragColor = vec4(tex2.aaa, 1.0);
+    vec4 tex3 = texture(uSampler2, vTexCoord); // gizmo pass
 
     // // Show both with additive blend
-    fragColor = mix(tex1, tex2, tex2.a);
+    vec4 solidWireframe = mix(tex1, tex2, tex2.a);
+    fragColor = mix(BLACK, solidWireframe, tex3.a); // 0.5 for blending
 }

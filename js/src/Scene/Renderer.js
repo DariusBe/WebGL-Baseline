@@ -31,7 +31,11 @@ screenPlane.addMaterial(
   new Material(
     "ScreenPlaneMaterial",
     new ShaderProgram(screenVS, screenFS, "ScreenPlaneShader"),
-    [new Uniform("uSampler0", "1i", 0), new Uniform("uSampler1", "1i", 1)]
+    [
+      new Uniform("uSampler0", "1i", 0),
+      new Uniform("uSampler1", "1i", 1),
+      new Uniform("uSampler2", "1i", 2),
+    ]
   ),
   true
 );
@@ -78,51 +82,67 @@ export class Renderer {
     };
   }
 
-  render(scene, camera, target = null, receiver = null, mode = "solid") {
+  render(scene, camera, target = null, mode = "solid") {
     const gl = this.gl;
 
+    // Bind target and set viewport
     if (target instanceof RenderTarget) {
       target.bind();
-      // Set viewport to FBO size!
       gl.viewport(0, 0, target.width, target.height);
     } else {
-      // Set viewport to canvas size for default framebuffer
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
 
-    if (this.depthTest) {
-      this.gl.enable(this.gl.DEPTH_TEST);
-    } else {
-      this.gl.disable(this.gl.DEPTH_TEST);
-    }
-    if (this.cullFace) {
-      this.gl.enable(this.gl.CULL_FACE);
-    } else {
-      this.gl.disable(this.gl.CULL_FACE);
-    }
-    if (this.stencilTest) {
-      this.gl.enable(this.gl.STENCIL_TEST);
-    } else {
-      this.gl.disable(this.gl.STENCIL_TEST);
-    }
-    if (this.blending && mode !== "wireframe") {
-      this.gl.enable(this.gl.BLEND);
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-      this.gl.blendEquation(this.gl.FUNC_ADD);
-    } else if (mode === "wireframe") {
-      // Enable blending for wireframe to handle transparency properly
-      this.gl.enable(this.gl.BLEND);
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-    } else {
-      this.gl.disable(this.gl.BLEND);
+    // Set up state based on mode
+    this.depthTest ? gl.enable(gl.DEPTH_TEST) : gl.disable(gl.DEPTH_TEST);
+    this.cullFace ? gl.enable(gl.CULL_FACE) : gl.disable(gl.CULL_FACE);
+    this.stencilTest ? gl.enable(gl.STENCIL_TEST) : gl.disable(gl.STENCIL_TEST);
+
+    // --- Mode-specific state ---
+    switch (mode) {
+      case "solid":
+      case "wireframe":
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.blendEquation(gl.FUNC_ADD);
+        break;
+      case "gizmo":
+      case "gizmos":
+        gl.disable(gl.BLEND);
+        gl.disable(gl.CULL_FACE);
+        gl.disable(gl.DEPTH_TEST);
+        break;
+      default:
+        gl.disable(gl.BLEND);
+        break;
     }
 
     gl.clearColor(...this.clearColor);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    gl.disable(gl.BLEND);
-    // console.log("Bound framebuffer:", gl.getParameter(gl.FRAMEBUFFER_BINDING));
-    this._renderNode(scene.root, camera, glMatrix.mat4.create(), mode);
+    // For solid/wireframe, disable blending after clear (for opaque geometry)
+    if (mode === "solid" || mode === "wireframe") {
+      gl.disable(gl.BLEND);
+    }
+
+    // Only render relevant objects for each mode
+    switch (mode) {
+      case "gizmo":
+      case "gizmos":
+        for (const obj of scene.getHierarchyList()) {
+          if (
+            obj.constructor.name === "Gizmo" ||
+            obj.constructor.name === "Lamp" ||
+            obj.constructor.name === "Grid"
+          ) {
+            this._renderNode(obj, camera, glMatrix.mat4.create(), mode);
+          }
+        }
+        break;
+      default:
+        this._renderNode(scene.root, camera, glMatrix.mat4.create(), mode);
+        break;
+    }
 
     // for MSAA, copy over MSAA renderTarget data into normal texture
     if (target instanceof RenderTarget && target.multisample) {
@@ -132,7 +152,6 @@ export class Renderer {
     // if a target is provided, unbind it
     if (target instanceof RenderTarget) {
       target.unbind();
-      // Reset viewport to canvas size when unbinding
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
     // unbind any resources
@@ -140,11 +159,6 @@ export class Renderer {
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     gl.bindVertexArray(null);
-
-    // if a receiver is provided, call its render method
-    // if (receiver && receiver instanceof SceneObject) {
-    //   this._renderNode(receiver, camera, glMatrix.mat4.create());
-    // }
   }
 
   _renderNode(object, camera, parentTransform, mode = "solid") {
@@ -158,6 +172,18 @@ export class Renderer {
 
     if (object.name !== "(root)") {
       if (!(object instanceof SceneObject)) return;
+
+      // --- Skip SceneExtras in solid/wireframe passes ---
+      if (
+        (mode === "solid" || mode === "wireframe") &&
+        (object.constructor.name === "Gizmo" ||
+          object.constructor.name === "Lamp" ||
+          object.constructor.name === "Grid")
+      ) {
+        // Do not render SceneExtras in solid/wireframe passes
+        return;
+      }
+
       object.updateTransformUniforms();
 
       // Set the view and projection matrices
@@ -170,7 +196,11 @@ export class Renderer {
 
       // --- Use a local variable for the material ---
       let material;
-      if (mode === "wireframe") {
+      if (
+        mode === "wireframe" &&
+        object.constructor.name !== "Grid" &&
+        object.constructor.name !== "Lamp"
+      ) {
         if (!object.wireframeMaterial) object.createWireframeShader();
         material = object.wireframeMaterial;
       } else {
@@ -194,22 +224,48 @@ export class Renderer {
         let vao = object.geometry.geomVAO;
         vao.bind();
 
-        if (object instanceof Lamp || object instanceof Grid) {
-          gl.drawArrays(gl.LINES, 0, object.geometry.primitiveCount);
-        } else if (object instanceof Bezier) {
-          gl.drawArraysInstanced(
-            gl.POINTS,
-            0,
-            object.geometry.lineVertices.length,
-            object.resolution
-          );
-        } else {
-          gl.drawArrays(
-            gl[this.primitiveType],
-            0,
-            this.primitiveCount || object.geometry.faces.length * 3
-          );
+        switch (object.constructor.name) {
+          case "Grid":
+            gl.drawArrays(gl.LINES, 0, object.geometry.primitiveCount);
+            break;
+
+          case "Lamp":
+            gl.drawArrays(gl.LINES, 0, object.geometry.primitiveCount);
+            break;
+
+          case "Bezier":
+            gl.drawArraysInstanced(
+              gl.POINTS,
+              0,
+              object.geometry.lineVertices.length,
+              object.resolution
+            );
+            break;
+
+          default: // Default to triangles
+            gl.drawArrays(
+              gl[this.primitiveType],
+              0,
+              this.primitiveCount || object.geometry.faces.length * 3
+            );
         }
+
+        // if (object instanceof Lamp || object instanceof Grid) {
+        //   gl.drawArrays(gl.LINES, 0, object.geometry.primitiveCount);
+        // } else if (object instanceof Bezier) {
+        //   gl.drawArraysInstanced(
+        //     gl.POINTS,
+        //     0,
+        //     object.geometry.lineVertices.length,
+        //     object.resolution
+        //   );
+        // } else {
+        //   gl.drawArrays(
+        //     gl[this.primitiveType],
+        //     0,
+        //     this.primitiveCount || object.geometry.faces.length * 3
+        //   );
+        // }
       }
 
       // Unbind all resources
@@ -251,8 +307,10 @@ export class Renderer {
     const program = shaderProgram.program; // WebGLProgram
     const loc0 = gl.getUniformLocation(program, "uSampler0");
     const loc1 = gl.getUniformLocation(program, "uSampler1");
+    const loc2 = gl.getUniformLocation(program, "uSampler2");
     if (loc0 !== null) gl.uniform1i(loc0, 0);
     if (loc1 !== null) gl.uniform1i(loc1, 1);
+    if (loc2 !== null) gl.uniform1i(loc2, 2);
 
     this.screenVAO.bind();
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 6);

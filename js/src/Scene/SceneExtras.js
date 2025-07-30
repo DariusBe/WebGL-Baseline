@@ -80,7 +80,7 @@ export class Grid extends SceneObject {
     this.geometry = new Geometry();
     this.geometry.lineVertices = this.gridBuilder();
     this.geometry.primitiveCount = this.geometry.lineVertices.length / 7; // Each vertex has 3 position components and 4 color components (XYZ RGBA)
-    console.log(this.geometry.lineVertices, this.geometry.primitiveCount);
+    // console.log(this.geometry.lineVertices, this.geometry.primitiveCount);
 
     this.geometry.prepareAttributes([
       new Attribute(
@@ -112,25 +112,16 @@ export class Grid extends SceneObject {
     let combinedGeom = [];
     const halfSize = this.size / 2;
     const step = this.size / this.resolution;
-    const subUnitSize = step / 5;
-    const subUnitColor = [1.0, 0.0, 0.0, 1.0];
+    const color = [0.0, 1.0, 0.0, 1.0]; // Green color for the grid lines
+    for (let i = -halfSize; i <= halfSize; i += step) {
+      // Horizontal lines
+      combinedGeom.push(-halfSize, 0, i, ...color);
+      combinedGeom.push(halfSize, 0, i, ...color);
 
-    let line_1 = [0.0, 0.0, -15.0];
-    let line_2 = [0.0, 0.0, 15.0];
-    let line_3 = [-15, 0.0, 0.0];
-    let line_4 = [15, 0.0, 0.0];
-    let black = [0.0, 0.0, 0.0, 1.0];
-    let red = [1.0, 1.0, 1.0, 1.0];
-
-    combinedGeom.push(...line_1);
-    combinedGeom.push(...black);
-    combinedGeom.push(...line_2);
-    combinedGeom.push(...black);
-    combinedGeom.push(...line_3);
-    combinedGeom.push(...red);
-    combinedGeom.push(...line_4);
-    combinedGeom.push(...red);
-    // combinedGeom.push(...orange);
+      // Vertical lines
+      combinedGeom.push(i, 0, -halfSize, ...color);
+      combinedGeom.push(i, 0, halfSize, ...color);
+    }
 
     return combinedGeom;
   };

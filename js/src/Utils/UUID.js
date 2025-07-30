@@ -27,14 +27,13 @@ export class UUID {
       throw new Error("Object does not have a getUUID method.");
     }
     const uuid = object.getUUID();
+    //extract counter
+    const counter = parseInt(uuid.slice(16, 24), 16);
+    // spread counter into R and G channels, each taking 4 bits
+    const r = (counter >> 4) & 0xff; // 8 bits
+    const g = counter & 0xff; // 8 bits
 
-    // Convert UUID to RGBA
-    // [16 Bits: DATE][8 Bits: COUNTER][8 Bits: RANDOM]
-    const r = parseInt(uuid.slice(0, 8), 16) % 256; // First 8 hex digits for red
-    const g = parseInt(uuid.slice(8, 12), 16) % 256; // Next 4 hex digits for green
-    const b = parseInt(uuid.slice(12, 16), 16) % 256; // Next 4 hex digits for blue
-    const a = parseInt(uuid.slice(16, 24), 16) % 256; // Last 8 hex digits for alpha
-    return [r / 255, g / 255, b / 255, a / 255];
+    return [r / 255, g / 255, 0, 1]; // Normalize to 0-1 range
   }
 
   equals(uuid) {

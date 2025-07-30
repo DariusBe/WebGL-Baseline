@@ -11,7 +11,7 @@ layout(location = 0) in vec3 aPosition;
 
 uniform mat4 uModel;
 
-// uniform binding index = 0
+// std140, uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
@@ -19,7 +19,6 @@ layout(std140) uniform GlobalUniforms {
     float uTime;
     float uShowCursor;
     vec4 uMouse;
-    bool uSelected;
 };
 out vec3 vPosition;
 
