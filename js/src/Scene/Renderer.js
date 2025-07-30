@@ -39,6 +39,7 @@ screenPlane.activeMaterial = screenPlane.solidMaterial;
 
 export class Renderer {
   constructor() {
+    /** @type {WebGLRenderingContext} */
     this.gl = GLContext.getInstance().gl;
     // set camera viewport
     // this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
@@ -46,7 +47,7 @@ export class Renderer {
     this.primitiveType = "TRIANGLES";
     this.primitiveCount = null;
     this.instanced = false;
-    this.clearColor = [0.0, 0.0, 0.0, 1.0];
+    this.clearColor = [0.3, 0.3, 0.3, 1.0];
     this.clear = ["COLOR_BUFFER_BIT", "DEPTH_BUFFER_BIT"];
     this.depthTest = true;
     this.cullFace = true;
@@ -65,7 +66,10 @@ export class Renderer {
     // enable blending
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+    // set blending equation
+    // this.gl.blendEquation(this.gl.FUNC_ADD);
     this.gl.blendEquation(this.gl.FUNC_ADD);
+    // this.gl.clearColor(...this.clearColor);
 
     // UUID handling
     const _uuid = UUID.generate();
@@ -105,14 +109,18 @@ export class Renderer {
       this.gl.enable(this.gl.BLEND);
       this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
       this.gl.blendEquation(this.gl.FUNC_ADD);
+    } else if (mode === "wireframe") {
+      // Enable blending for wireframe to handle transparency properly
+      this.gl.enable(this.gl.BLEND);
+      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
     } else {
       this.gl.disable(this.gl.BLEND);
     }
 
-    // Clear the canvas
-    // gl.clearColor(...this.clearColor);
+    gl.clearColor(...this.clearColor);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    gl.disable(gl.BLEND);
     // console.log("Bound framebuffer:", gl.getParameter(gl.FRAMEBUFFER_BINDING));
     this._renderNode(scene.root, camera, glMatrix.mat4.create(), mode);
 

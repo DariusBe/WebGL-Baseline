@@ -4,6 +4,7 @@ precision highp float;
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
+#define ORANGE vec4(1.0, 0.5, 0.0, 1.0)
 #define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
 #define PI 3.14159265359
 
@@ -14,6 +15,8 @@ in vec3 vColor;
 
 uniform sampler2D uSampler;
 uniform mat4 uModel;
+uniform vec4 uPickingColor;
+uniform bool uSelected;
 
 // uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
@@ -25,10 +28,11 @@ layout(std140) uniform GlobalUniforms {
     vec4 uMouse;
 };
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
+layout(location = 1) out vec4 pickingID;
 
 vec4 prepareCursor(float radius, vec4 color) {
-    vec2 mouse = uMouse.xy;
+    vec2 mouse = 2.0 * uMouse.xy * uResolution; // [0, 1] range
 
     float mouseClick = uMouse.z;
 
@@ -97,6 +101,9 @@ void main() {
     // } else {
 
     fragColor = vec4(textureColor.rgb, 1.0); // * lambert;
+    fragColor.a = 1.0;
+    pickingID = uPickingColor;
+
     // }
     // fragColor = vec4(0.0, 1.0, 0.0, 1.0);
 }

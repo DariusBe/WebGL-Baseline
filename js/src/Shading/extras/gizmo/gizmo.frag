@@ -21,6 +21,7 @@ layout(std140) uniform GlobalUniforms {
     float uTime;
     float uShowCursor;
     vec4 uMouse;
+    bool uSelected;
 };
 
 out vec4 fragColor;

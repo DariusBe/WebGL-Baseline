@@ -18,7 +18,8 @@ export class Material {
     this.uniformData = uniformData; // Map of uniform names to Uniform objects
     this.texture = texture;
 
-    const gl = GLContext.getInstance().gl;
+    /** @type {WebGLRenderingContext} */
+    this.gl = GLContext.getInstance().gl;
     if (this.shaderProgram == null) {
       console.info("No shader program provided, creating a default one.");
       this.shaderProgram = new ShaderProgram();
@@ -43,7 +44,7 @@ export class Material {
   }
 
   setTexture(texture, unit = 0, uniformName = "uSampler") {
-    const gl = GLContext.getInstance().gl;
+    const gl = this.gl;
     if (this.getUniformLocation(uniformName) === null) {
       console.warn(
         `Uniform ${uniformName} not found in program ${this.shaderProgram.program}`
@@ -78,7 +79,7 @@ export class Material {
    * @returns {void}
    */
   setUniform = (uniform) => {
-    const gl = GLContext.getInstance().gl;
+    const gl = this.gl;
     const program = this.shaderProgram.program;
 
     gl.useProgram(program);
@@ -158,7 +159,7 @@ export class Material {
   };
 
   getUniformLocation(name) {
-    const gl = GLContext.getInstance().gl;
+    const gl = this.gl;
     const program = this.shaderProgram.program;
     gl.useProgram(program);
     const uniformLocation = gl.getUniformLocation(program, name);
@@ -173,7 +174,7 @@ export class Material {
 
   // infer all active uniforms from the shader program
   getActiveUniforms() {
-    const gl = GLContext.getInstance().gl;
+    const gl = this.gl;
     const program = this.shaderProgram.program;
     const list = [];
     gl.useProgram(program);
@@ -250,7 +251,7 @@ export class Material {
   }
 
   use() {
-    const gl = GLContext.getInstance().gl;
+    const gl = this.gl;
     gl.useProgram(this.shaderProgram.program);
   }
 

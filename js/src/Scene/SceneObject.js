@@ -31,6 +31,7 @@ export class SceneObject {
     this.solidMaterial = null;
     this.wireframeMaterial = null;
     this.transform = transform || new Transform();
+    this.selected = false; // Selection state
 
     if (this.materials.size > 0) {
       // If materials are provided, set the first one as active
@@ -44,15 +45,24 @@ export class SceneObject {
       this.activeMaterial instanceof Material
     ) {
       this.activeMaterial.use();
+      this.activeMaterial.setUniform(
+        new Uniform("uPickingColor", "vec4", this.pickingColor),
+        new Uniform("uSelected", "bool", this.selected)
+      );
     }
 
     this.solidMaterial = this.activeMaterial;
+    if (this.wireframeMaterial == null) {
+      this.createWireframeShader();
+    }
 
     // UUID handling
     const _uuid = UUID.generate();
     this.getUUID = () => {
       return _uuid;
     };
+
+    this.pickingColor = UUID.uuidToRGBA(this);
   }
 
   static createFromOBJ = async (
@@ -100,6 +110,9 @@ export class SceneObject {
       if (name === materialName) {
         this.activeMaterial = material;
         material.use();
+        this.activeMaterial.setUniform(
+          new Uniform("uPickingColor", "vec4", this.pickingColor)
+        );
         this.updateTransformUniforms();
         return;
       }
@@ -114,6 +127,9 @@ export class SceneObject {
       if (setActive) {
         this.activeMaterial = material;
         material.use();
+        this.activeMaterial.setUniform(
+          new Uniform("uPickingColor", "4fv", this.pickingColor)
+        );
         this.updateTransformUniforms();
       }
     } else {
@@ -148,7 +164,8 @@ export class SceneObject {
       )
     );
     this.wireframeMaterial.setUniform(
-      new Uniform("uModel", "mat4", this.transform.matrix)
+      new Uniform("uModel", "mat4", this.transform.getMatrix()),
+      new Uniform("uSelected", "bool", this.selected)
     );
     this.materials.set(this.wireframeMaterial.name, this.wireframeMaterial);
   }
@@ -163,6 +180,18 @@ export class SceneObject {
       this.children.splice(index, 1);
     } else {
       console.warn("Child not found in children array.");
+    }
+  }
+
+  toggleSelected() {
+    this.selected = !this.selected;
+    const uniform = new Uniform("uSelected", "bool", this.selected);
+    if (this.activeMaterial) {
+      this.activeMaterial.setUniform(uniform);
+    }
+
+    if (this.wireframeMaterial) {
+      this.wireframeMaterial.setUniform(uniform);
     }
   }
 

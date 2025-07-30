@@ -10,7 +10,7 @@ in vec4 vColor;
 
 uniform mat4 uModel;
 
-// std140
+// std140, uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
@@ -18,6 +18,7 @@ layout(std140) uniform GlobalUniforms {
     float uTime;
     float uShowCursor;
     vec4 uMouse;
+    bool uSelected;
 };
 
 out vec4 fragColor;
@@ -39,7 +40,7 @@ vec4 prepareCursor(float radius, vec4 color) {
 
 void main() {
     float centerDist = length(gl_PointCoord - 0.5);
-    float radius = 0.25;
+    float radius = 0.5;
 
     fragColor = vec4(vColor * step(centerDist, radius));
 }

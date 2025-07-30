@@ -48,6 +48,7 @@ export class Geometry {
    * @param {WebGLBuffer} indexBuffer - Optional buffer containing indices for indexed drawing.
    */
   constructor(attributes = null, indexBuffer = null) {
+    /** @type {WebGLRenderingContext} */
     const gl = GLContext.getInstance().gl;
     this.geomVAO = null;
     this.wireframeVAO = null;
@@ -417,37 +418,39 @@ export class Geometry {
     // this.buildHalfEdgeMesh();
     // }
 
-    console.groupCollapsed("parsed OBJ-file");
-    console.log("Object Name:", objectName);
-    console.groupCollapsed("Vertices:", this.vertices.length);
-    console.log(this.vertices);
-    console.groupEnd();
-    console.groupCollapsed("Texture Coordinates:", this.texCoords.length);
-    console.log(this.texCoords);
-    console.groupEnd();
-    console.groupCollapsed("Vertex Normals:", this.vertexNormals.length);
-    console.log(this.vertexNormals);
-    console.groupEnd();
-    console.groupCollapsed("Faces:", this.faces.length);
-    console.log(this.faces);
-    console.groupEnd();
-    console.groupCollapsed("Line Elements:", this.lineElements.length);
-    console.log(this.lineElements);
-    console.groupEnd();
-    console.groupCollapsed(
-      "Parameter Space Vertices:",
-      this.parameterSpaceVertices.length
-    );
-    console.log(this.parameterSpaceVertices);
-    console.groupEnd();
-    console.log("Smooth Shading:", this.smoothShading);
-    console.groupCollapsed(
-      "combined attributes buffer:",
-      this.combinedGeom.length
-    );
-    console.log(this.combinedGeom);
-    console.groupEnd();
-    console.groupEnd();
+    if (verbose) {
+      console.groupCollapsed("parsed OBJ-file");
+      console.log("Object Name:", objectName);
+      console.groupCollapsed("Vertices:", this.vertices.length);
+      console.log(this.vertices);
+      console.groupEnd();
+      console.groupCollapsed("Texture Coordinates:", this.texCoords.length);
+      console.log(this.texCoords);
+      console.groupEnd();
+      console.groupCollapsed("Vertex Normals:", this.vertexNormals.length);
+      console.log(this.vertexNormals);
+      console.groupEnd();
+      console.groupCollapsed("Faces:", this.faces.length);
+      console.log(this.faces);
+      console.groupEnd();
+      console.groupCollapsed("Line Elements:", this.lineElements.length);
+      console.log(this.lineElements);
+      console.groupEnd();
+      console.groupCollapsed(
+        "Parameter Space Vertices:",
+        this.parameterSpaceVertices.length
+      );
+      console.log(this.parameterSpaceVertices);
+      console.groupEnd();
+      console.log("Smooth Shading:", this.smoothShading);
+      console.groupCollapsed(
+        "combined attributes buffer:",
+        this.combinedGeom.length
+      );
+      console.log(this.combinedGeom);
+      console.groupEnd();
+      console.groupEnd();
+    }
   };
 
   prepareOBJAttributes = () => {

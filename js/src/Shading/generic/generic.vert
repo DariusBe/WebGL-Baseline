@@ -6,9 +6,12 @@ layout(location = 1) in vec2 aTexCoord;
 layout(location = 2) in vec3 aNormal;
 layout(location = 3) in vec3 aColor;
 
+uniform sampler2D uSampler;
 uniform mat4 uModel;
+uniform vec4 uPickingColor;
+uniform bool uSelected;
 
-// std140
+// uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;

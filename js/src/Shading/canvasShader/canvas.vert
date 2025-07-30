@@ -6,6 +6,7 @@ layout(location = 2) in vec3 aNormal;
 layout(location = 3) in vec3 aColor;
 
 // std140
+// uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;

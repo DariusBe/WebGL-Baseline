@@ -35,12 +35,26 @@ export class GLContext {
   globalUniformLocation = {};
 
   // global uniforms
-  uView;
   uProjection;
+  uView;
   uResolution;
   uTime = 5.0;
   uShowCursor;
   uMouse;
+  uSelected;
+
+  /*
+  // uniform binding index = 0
+  layout(std140) uniform GlobalUniforms {
+    mat4 uProjection;
+    mat4 uView;
+    vec2 uResolution;
+    float uTime;
+    float uShowCursor;
+    vec4 uMouse;
+    bool uSelected;
+  };  
+  */
 
   // perspective matrices
   lookAt;
@@ -130,6 +144,7 @@ export class GLContext {
     this.updateGlobalUniform("uProjection", this.uProjection);
 
     // set up event listeners
+    // this.canvas.addEventListener("click", this.onclick);
     this.canvas.addEventListener("touchmove", this.touchmove);
     this.canvas.addEventListener("mousemove", this.onmousemove);
     window.addEventListener("resize", this.onresize);
@@ -192,34 +207,46 @@ export class GLContext {
     // glMatrix.mat4.scale(this.uView, this.uView, [0.999, 0.999, 0.999]);
   };
   /* EVENT HANDLERS*/
-  onmousemove = (e) => {
-    const shaderList = this.shaderList;
-    const gl = this.gl;
-
+  // click event handler
+  onclick = (e) => {
     const pressedButton = e.buttons === 1 ? 1.0 : 0.0;
-    const padding = 0;
+    // visible viewport
+    const rect = this.canvas.getBoundingClientRect();
+    let mouseX = e.clientX - rect.left;
+    // let mouseY = Math.floor(rect.bottom - e.clientY); // flip y-axis
+    let mouseY = e.clientY - rect.top; // flip y-axis
+
+    this.uMouse = new Float32Array([mouseX, mouseY, pressedButton]);
+
+    this.updateGlobalUniform("uMouse", this.uMouse);
+  };
+  touchmove = (e) => {
+    console.log(this.canvas.width, this.canvas.height);
+    // visible viewport
+    const rect = this.canvas.getBoundingClientRect();
+    let mouseX = e.clientX - rect.left;
+    // let mouseY = Math.floor(rect.bottom - e.clientY); // flip y-axis
+    let mouseY = e.clientY - rect.top; // flip y-axis
+
+    this.uMouse = new Float32Array([mouseX, mouseY, pressedButton]);
+
+    this.updateGlobalUniform("uMouse", mouse);
+  };
+
+  onmousemove = (e) => {
+    const pressedButton = e.buttons === 1 ? 1.0 : 0.0;
 
     // visible viewport
     const rect = this.canvas.getBoundingClientRect();
     let mouseX = e.clientX - rect.left;
+    // let mouseY = Math.floor(rect.bottom - e.clientY); // flip y-axis
     let mouseY = e.clientY - rect.top; // flip y-axis
-    // normalize mouse coordinates to [0, 1] range
-    if (mouseX < 0) mouseX = 0;
-    if (mouseY < 0) mouseY = 0;
-    if (mouseX > this.canvas.width) mouseX = this.canvas.width;
-    if (mouseY > this.canvas.height) mouseY = this.canvas.height;
 
-    const mouse = new Float32Array([
-      mouseX,
-      mouseY * -1 + this.canvas.height,
-      pressedButton,
-    ]);
+    this.uMouse = new Float32Array([mouseX, mouseY, pressedButton]);
 
-    this.updateGlobalUniform("uMouse", mouse);
+    this.updateGlobalUniform("uMouse", this.uMouse);
   };
   touchmove = (e) => {
-    const shaderList = this.shaderList;
-    const gl = this.gl;
     console.log(this.canvas.width, this.canvas.height);
 
     e.preventDefault(); // prevent scrolling
@@ -227,8 +254,8 @@ export class GLContext {
     // update mouse uniform
     const pressedButton = 1.0;
     const mouse = new Float32Array([
-      touch.clientX / this.canvas.width,
-      1 - touch.clientY / this.canvas.height,
+      touch.clientX,
+      touch.clientY,
       pressedButton,
     ]);
 
@@ -285,6 +312,7 @@ export class GLContext {
             gl.MAX_FRAGMENT_UNIFORM_VECTORS
           ),
           maxVertexAttribs: gl.getParameter(gl.MAX_VERTEX_ATTRIBS),
+          maxMSAASamples: gl.getParameter(gl.MAX_SAMPLES),
         },
       ],
     };
@@ -309,19 +337,27 @@ export class GLContext {
    * @param {boolean} verbose - whether to print the buffer layout to console
    */
   fillGlobalUniformBuffer = (verbose = false) => {
-    this.globalUniformData = new Float32Array(16 + 16 + 2 + 1 + 1 + 4); //
+    this.globalUniformData = new Float32Array(16 + 16 + 2 + 1 + 1 + 3 + 5); //
     /** Buffer Layout:
      * populate buffer with data
      *  1) mat4 uProjection; == 4 * 4 == 16 elements in one chunk
      *  2) mat4 uView; == 4 * 4 == 16 elements in two chunks
-     *  4) uniform vec2 uResolution; == 2 elements in chunk
-     *  5) uniform float uTime; == 1 element in chunk
-     *  6) uniform bool uShowCursor; == 1 element in chunk
-     *  7) uniform vec3 uMouse; == 3 elements in chunk
-     *  [1][1][1][1] x 4
-     *  [2][2][2][2] x 4
-     *  [3][3]-[4]-[5]
-     *  [6][6][6]-[Pad]
+     *  3) vec2 uResolution; == 2 elements in chunk
+     *  4) uniform float uTime; == 1 element in chunk
+     *  5) uniform bool uShowCursor; == 1 element in chunk
+     *  6) uniform vec3 uMouse; == 3 elements in chunk
+     *
+     *
+     *  [1][1][1][1]  // uProjection -> 0...15
+     *    ...
+     *    ...
+     *    ...
+     *  [2][2][2][2] // uView -> 16...31
+     *    ...
+     *    ...
+     *    ...
+     *  [3][3]-[4]-[5] // uResolution -> 32..33, uTime -> 34, uShowCursor -> 35
+     *  [6][6][6]-[P] // uMouse -> 36..38, Padding to 40
      */
     const offsets = [0, 16, 32, 34, 35, 36];
 
@@ -332,28 +368,26 @@ export class GLContext {
 
     this.uTime = new Float32Array([0.0]);
     this.uShowCursor = new Float32Array([0.0]);
-    const padding = new Float32Array([0.0]);
-    this.uMouse = new Float32Array([-1.0, -2.0, 0.0, padding]);
+    this.uMouse = new Float32Array([-1.0, -2.0, 0.0]);
 
     const chunk1 = this.uProjection;
     const chunk2 = this.uView;
 
     this.globalUniformLocation = {
-      uProjection: 0,
-      uView: 16,
-      uResolution: 32,
-      uTime: 34,
-      uShowCursor: 35,
-      uMouse: 36,
+      uProjection: offsets[0],
+      uView: offsets[1],
+      uResolution: offsets[2],
+      uTime: offsets[3],
+      uShowCursor: offsets[4],
+      uMouse: offsets[5],
     };
 
-    this.globalUniformData.set(chunk1, 0);
-    this.globalUniformData.set(chunk2, 16);
-    this.globalUniformData.set(this.uResolution, 32);
-    this.globalUniformData.set(this.uTime, 34);
-    this.globalUniformData.set(this.uShowCursor, 35);
-    this.globalUniformData.set(this.uMouse, 36);
-
+    this.globalUniformData.set(chunk1, offsets[0]);
+    this.globalUniformData.set(chunk2, offsets[1]);
+    this.globalUniformData.set(this.uResolution, offsets[2]);
+    this.globalUniformData.set(this.uTime, offsets[3]);
+    this.globalUniformData.set(this.uShowCursor, offsets[4]);
+    this.globalUniformData.set(this.uMouse, offsets[5]);
     if (verbose) {
       console.groupCollapsed(
         "Global Uniform Buffer, Length:",
@@ -417,6 +451,17 @@ export class GLContext {
     } else if (typeof value === "number") {
       value = new Float32Array([value]);
     }
+    if (uniform === "uSelected") {
+      console.error(
+        "Updating global uniform:",
+        uniform,
+        "at offset:",
+        offset,
+        "value:",
+        value
+      );
+      return;
+    }
     const BYTE = 4;
     this.globalUniformData.set(value, offset);
     gl.bufferSubData(gl.UNIFORM_BUFFER, offset * BYTE, value);
@@ -461,6 +506,11 @@ export class GLContext {
     gl.bufferData(gl.UNIFORM_BUFFER, this.globalUniformData, gl.DYNAMIC_DRAW);
   };
 
+  /**
+   * Returns the location of the global uniform block in the shader
+   * @param {Shader} shader - the shader to get the global uniform block location from
+   * @returns {Object|null} - the block index, size, and binding point of the global uniform block, or null if not found
+   */
   getGlobalUniformBlockLocation = (shader) => {
     const gl = this.gl;
     const blockIndex = gl.getUniformBlockIndex(
@@ -513,35 +563,10 @@ export class GLContext {
     };
   };
 
-  showMatrixGuides = () => {
-    console.groupCollapsed("Matrix Guides");
-    console.log("uProjection\n", Utils.printMatrix(this.uProjection, 4, 4, 2));
-    console.log("uView\n", Utils.printMatrix(this.uView, 4, 4, 2));
-
-    console.info(
-      "A View matrix rotated by 45 degrees about the z-axis looks like this:\n"
-    );
-    const rotationMatrix = glMatrix.mat4.create();
-    glMatrix.mat4.rotateZ(rotationMatrix, rotationMatrix, Math.PI / 4);
-    console.log(
-      "Rotation Matrix:\n",
-      Utils.printMatrix(rotationMatrix, 4, 4, 2)
-    );
-
-    // listen to keypress 'r':
-    document.addEventListener("keypress", (e) => {
-      var test = glMatrix.mat4.create();
-      if (e.key === "r") {
-        glMatrix.mat4.mul(this.uView, rotationMatrix, this.uView);
-        this.updateGlobalUniform("uView", this.uView);
-      }
-      if (e.key === "p") {
-        console.log("rotated uView\n", Utils.printMatrix(this.uView, 4, 4, 8));
-      }
-    });
-    console.groupEnd();
-  };
-
+  /**
+   * Updates the global uniforms in the uniform buffer
+   * @returns {void}
+   */
   updateUniforms() {
     this.tick += this.timestep;
     this.updateGlobalUniform("uTime", this.tick);
@@ -573,11 +598,39 @@ export class GLContext {
     this.updateStats(cycle, fps);
   }
 
+  /**
+   * Updates the stats HTML elements with the current cycle and FPS
+   * @param {number} cycle - the current cycle number
+   * @param {number} fps - the current frames per second
+   */
   updateStats = (cycle, fps) => {
     this.stats.cycle.innerHTML = cycle;
     this.stats.fps.innerHTML = fps;
   };
 
+  /**
+   * Returns the maximum number of samples for MSAA (Multisample Anti-Aliasing) supported by the device.
+   * @returns {number} The maximum number of samples supported by the WebGL context
+   */
+  requestMSAAAvailability() {
+    const samples = this.gl.getParameter(this.gl.MAX_SAMPLES);
+    const formats = this.gl.getInternalformatParameter(
+      this.gl.RENDERBUFFER,
+      this.gl.RGBA16F,
+      this.gl.SAMPLES
+    );
+    console.info(
+      `Max MSAA samples supported: ${samples}, Available formats:`,
+      formats
+    );
+
+    return samples;
+  }
+
+  /**
+   * Start the animation loop by invoking *requestAnimationFrame()*
+   * @param {function} job - a function to run on each frame (optional)
+   */
   animate = (job = () => {}) => {
     const renderloop = () => {
       job();

@@ -12,7 +12,7 @@ layout(location = 1) in vec4 aColor;
 
 uniform mat4 uModel;
 
-// std140
+// uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
@@ -20,6 +20,7 @@ layout(std140) uniform GlobalUniforms {
     float uTime;
     float uShowCursor;
     vec4 uMouse;
+    bool uSelected;
 };
 out vec3 vPosition;
 out vec4 vColor;

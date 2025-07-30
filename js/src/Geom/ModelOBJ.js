@@ -135,7 +135,7 @@ export class ModelOBJ {
    * @param {string?} mtl_src Optionally, the path to an .mtl-file
    * @returns {ModelOBJ} a ModelOBJ object containing geometry lists
    */
-  parseOBJFile = async (src, verbose = true, mtl_src = "") => {
+  parseOBJFile = async (src, verbose = false, mtl_src = "") => {
     const then = performance.now();
     const response = await fetch(src);
     const content = await response.text();
@@ -310,13 +310,15 @@ export class ModelOBJ {
       );
     }
     // }
-    console.info(
-      "Parsed OBJ-file",
-      '"' + src + '"',
-      "in",
-      performance.now() - then,
-      "ms."
-    );
+    if (verbose) {
+      console.info(
+        "Parsed OBJ-file",
+        '"' + src + '"',
+        "in",
+        performance.now() - then,
+        "ms."
+      );
+    }
     // console.log(Utils.printMatrix(obj.combined, 6, obj.combined.length / 6, 1));
     return obj;
   };

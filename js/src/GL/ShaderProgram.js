@@ -123,6 +123,7 @@ export class ShaderProgram {
     fragmentShaderCode = null,
     tf_description = null
   ) {
+    /** @type {WebGLRenderingContext} */
     const gl = GLContext.getInstance().gl;
     const verbosityLevel = GLContext.getInstance().verbosityLevel;
 

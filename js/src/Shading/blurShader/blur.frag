@@ -9,15 +9,17 @@ precision mediump float;
 in vec2 vTexCoord;
 uniform sampler2D uSampler; // texture unit 0
 
+// uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
-    mat4 uModel;
     vec2 uResolution;
     float uTime;
     float uShowCursor;
     vec4 uMouse;
+    bool uSelected;
 };
+
 uniform float uAttenuation;
 uniform int uKernelSize;
 uniform float uKernel[99];

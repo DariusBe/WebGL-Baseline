@@ -3,7 +3,7 @@ precision highp float;
 
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
-#define ORANGE vec4(1.0, 0.75, 0.3, 1.0)
+#define ORANGE vec4(1.0, 0.7, 0.2, 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 0.5)
 
 in vec3 vPosition;
@@ -12,8 +12,9 @@ in vec3 vBarycentric;
 
 uniform sampler2D uSampler;
 uniform mat4 uModel;
+uniform bool uSelected;
 
-// uniform binding index = 0
+// std140, uniform binding index = 0
 layout(std140) uniform GlobalUniforms {
     mat4 uProjection;
     mat4 uView;
@@ -22,6 +23,14 @@ layout(std140) uniform GlobalUniforms {
     float uShowCursor;
     vec4 uMouse;
 };
+
+// scale mat4 by xyz
+mat4 scaleBy(mat4 m, float x, float y, float z) {
+    m[0][0] *= x;
+    m[1][1] *= y;
+    m[2][2] *= z;
+    return m;
+}
 
 out vec4 fragColor;
 
@@ -33,8 +42,8 @@ float edgeFactor(float minWidth, float maxWidth) {
     return 1.0 - smoothstep(0.0, edge, minBary);
 }
 
-vec4 wireframe(vec4 color) {
-    float minWidth = 0.025; // Minimum allowed width (in pixels)
+vec4 wireframe(vec4 color, float width) {
+    float minWidth = width; // Minimum allowed width (in pixels)
     float maxWidth = 0.5; // Maximum allowed width (in pixels)
     float alpha = edgeFactor(minWidth, maxWidth);
     // apply alpha to color
@@ -42,10 +51,19 @@ vec4 wireframe(vec4 color) {
 }
 
 void main() {
-    if (any(lessThan(vBarycentric, vec3(0.05)))) {
-        fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    // if (any(lessThan(vBarycentric, vec3(0.035)))) {
+    //     fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    // }
+    // else {
+    //     fragColor = ORANGE;
+    //     // discard;
+    // }
+    vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 col = BLACK;
+    float lineWidth = 0.1;
+    if (uSelected) {
+        col = ORANGE;
+        lineWidth = 0.095;
     }
-    else {
-        fragColor = vec4(0.5, 0.5, 0.5, 0.0);
-    }
+    fragColor = wireframe(col, lineWidth);
 }

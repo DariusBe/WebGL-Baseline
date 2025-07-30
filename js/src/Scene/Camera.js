@@ -18,6 +18,7 @@ export class Camera {
     this.target = target || [0, 0, 0]; // means the camera looks towards the negative Z-axis
     this.up = up || [0, 1, 0]; // Up direction of the camera, typically Y-axis
     this.fov = fov;
+    /** @type {WebGLRenderingContext} */
     this.gl = GLContext.getInstance().gl;
     this.canvas = this.gl.canvas;
     this.aspectRatio = this.canvas.width / this.canvas.height;
