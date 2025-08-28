@@ -32,6 +32,10 @@ layout(location = 1) out vec4 pickingID;
 void main() {
     if (length(WHITE) < 0.1) // or some condition for background
         discard;
-    fragColor = vec4(vColor.rgb, 0.5); // or 1.0
+
+    float dist = distance(vec3(0.0), vPosition.xyz);
+    fragColor = BLACK;
+    fragColor.a = 0.5;
+
     pickingID = uPickingColor;
 }

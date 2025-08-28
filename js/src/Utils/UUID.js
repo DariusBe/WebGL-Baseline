@@ -28,12 +28,19 @@ export class UUID {
     }
     const uuid = object.getUUID();
     //extract counter
+
     const counter = parseInt(uuid.slice(16, 24), 16);
+    // extract random part
+    const random = parseInt(uuid.slice(24, 32), 16);
+
     // spread counter into R and G channels, each taking 4 bits
     const r = (counter >> 4) & 0xff; // 8 bits
     const g = counter & 0xff; // 8 bits
+    // fill B and A channels with random values
+    const b = (random >> 4) & 0xff; // 8 bits
+    const a = random & 0xff; // 8 bits
 
-    return [r / 255, g / 255, 0, 1]; // Normalize to 0-1 range
+    return [r / 255, g / 255, b / 255, a / 255]; // Normalize to 0-1 range
   }
 
   equals(uuid) {

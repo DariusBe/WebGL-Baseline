@@ -24,7 +24,7 @@ export class SceneObject {
     transform = null
   ) {
     this.name = name;
-    this.children = [];
+    this.children = new Map();
     this.geometry = geometry || new Geometry();
     this.materials = new Map(material ? [[material.name, material]] : []);
     this.activeMaterial = material || null;
@@ -61,6 +61,10 @@ export class SceneObject {
     this.solidMaterial = this.activeMaterial;
     if (this.wireframeMaterial == null) {
       this.createWireframeShader();
+      this.wireframeMaterial.setUniform(
+        new Uniform("uPickingColor", "vec4", this.pickingColor),
+        new Uniform("uSelected", "bool", this.selected)
+      );
     }
   }
 
@@ -170,16 +174,14 @@ export class SceneObject {
   }
 
   addChild(child) {
-    this.children.push(child);
+    this.children.set(child.name, child);
   }
 
   removeChild(child) {
-    const index = this.children.indexOf(child);
-    if (index > -1) {
-      this.children.splice(index, 1);
-    } else {
-      console.warn("Child not found in children array.");
-    }
+    const ret = this.children.delete(child.name);
+    ret
+      ? console.info(`removal of ${child.name} successful`)
+      : console.error(`removal of ${child.name} failed`);
   }
 
   toggleSelected() {

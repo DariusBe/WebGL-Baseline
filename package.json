@@ -1,6 +1,0 @@
-{
-  "devDependencies": {
-    "@types/webgl2": "^0.0.11",
-    "typescript": "^5.9.2"
-  }
-}

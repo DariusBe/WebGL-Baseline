@@ -15,7 +15,6 @@ import { Gizmo } from "./src/Scene/SceneExtras.js";
 import { Lamp } from "./src/Scene/Lamp.js";
 import { Grid } from "./src/Scene/SceneExtras.js";
 import { UUID } from "./src/Utils/UUID.js";
-
 import { Bezier } from "./src/Scene/SceneExtras.js";
 
 /* Globals */
@@ -37,11 +36,10 @@ const lamp = new Lamp("Sun", "lamp", 1.0);
 // const lampGizmo = new Gizmo("LampGizmo", "lamp");
 // lampGizmo.transform.setTranslation(0.75, 0, 0);
 // lampGizmo.transform.setScale(0.025, 0.025, 0.025);
-lamp.transform.setTranslation(0.75, 0, 0);
+lamp.transform.setTranslation(0.75, 0.85, 0);
 scene.add(lamp);
 
 const grid = new Grid("Grid", 100, 250, null);
-// grid.transform.setScale(0.1, 0.1, 0.1);
 scene.add(grid);
 
 // MARS
@@ -52,7 +50,7 @@ const mars = await SceneObject.createFromOBJ(
 mars.transform.setScale(0.4, 0.4, 0.4);
 const marsTex = new Texture(
   "MarsTexture",
-  await Utils.loadImage("resources/textures/mars.jpg", 1440, 720),
+  await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),
   1440,
   720,
   "RGBA16F",
@@ -67,6 +65,32 @@ mars.solidMaterial = marsMaterial; // Set solid material
 mars.activeMaterial = marsMaterial;
 mars.name = "Mars";
 scene.add(mars);
+
+// const decalCube = await SceneObject.createFromOBJ(
+//   "resources/models/decalCube.obj"
+// );
+// decalCube.transform.setScale(0.5, 0.5, 0.5);
+// const decalCubeTex = new Texture(
+//   "DecalCubeTexture",
+//   await Utils.loadImage("resources/textures/decalCube.png", 2048, 2048),
+//   2048,
+//   2048,
+//   "RGBA16F",
+//   "LINEAR",
+//   "RGBA",
+//   "FLOAT",
+//   "CLAMP_TO_EDGE"
+// );
+// const decalCubeMaterial = new Material(
+//   "DecalCubeMaterial",
+//   null,
+//   null,
+//   decalCubeTex
+// );
+// decalCube.addMaterial(decalCubeMaterial, true);
+// decalCube.solidMaterial = decalCubeMaterial; // Set solid material
+// decalCube.activeMaterial.setTexture(decalCubeTex, 0, "uSampler");
+// scene.add(decalCube);
 
 // EARTH
 const earthTex = new Texture(
@@ -133,7 +157,7 @@ UUID.uuidToRGBA(mars); // Log the UUID to RGBA conversion
 const renderer = new Renderer();
 const mainCamera = new Camera("mainCamera");
 mainCamera.transform.setTranslation(0, 1, -15); // Default position
-mainCamera.fov = 15; // Default field of view
+mainCamera.fov = 8; // Default field of view
 
 // create an FBO for rendering the scene with DPR
 const solidPass = new RenderTarget(
@@ -172,7 +196,7 @@ const wireframePass = new RenderTarget(
     "CLAMP_TO_EDGE"
   ),
   true,
-  false
+  true
 );
 
 const gizmoPass = new RenderTarget(
@@ -195,12 +219,11 @@ const gizmoPass = new RenderTarget(
 );
 
 // PICKING;
-// for (const obj of scene.getHierarchyList()) {
-//   console.log("Object picking UUIDs:", obj.name + ":", obj.pickingColor);
-// }
-
 const pickObjects = (x, y) => {
-  solidPass.msaaFBOCopyOver(); // Ensure MSAA data is copied over
+  // for (const obj of scene.getHierarchyList()) {
+  //   console.log("Object picking UUIDs:", obj.name + ":", obj.pickingColor);
+  // }
+  // solidPass.msaaFBOCopyOver(); // Ensure MSAA data is copied over
   const pickedColor = solidPass.readPickingAt(x, y);
   // console.log("Picked color:", pickedColor);
 
@@ -223,14 +246,18 @@ const pickObjects = (x, y) => {
 };
 
 // animate;
+scene.printHierarchyList();
+
 const animate = () => {
   glContext.updateUniforms();
   const mouse = glContext.uMouse;
 
   // transformations
-  mars.transform.rotate(0, pi * -0.0005, 0);
-  earth.transform.rotate(0, pi * 0.002, pi * 0.0000012);
-  moon.transform.rotate(0, pi * -0.003, 0);
+  const k = 0.5;
+  mars.transform.rotate(0, pi * -0.001 * k, 0);
+  // earth.transform.rotate(0, pi * 0.01 * k, pi * 0.0000012);
+  // moon.transform.rotate(0, pi * -0.01 * k, 0);
+  // decalCube.transform.rotate(0, pi * -0.01 * k, 0);
 
   // render the scene: solid pass, wireframe pass into FBOs
   renderer.render(scene, mainCamera, wireframePass, "wireframe");

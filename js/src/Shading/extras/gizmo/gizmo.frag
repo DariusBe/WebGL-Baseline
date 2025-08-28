@@ -31,5 +31,6 @@ layout(location = 1) out vec4 pickingID;
 void main() {
     if (length(WHITE) < 0.1) // or some condition for background
         discard;
-    fragColor = vec4(GRAY.rgb, 0.1); // or 1.0 for opaque lines
+    fragColor = BLACK;
+    fragColor.a = 0.0;
 }

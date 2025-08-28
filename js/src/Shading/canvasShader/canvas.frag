@@ -3,6 +3,7 @@ precision highp float;
 
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
+#define GRAY vec4(vec3(0.15), 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
 #define ORANGE vec4(1.0, 0.5, 0.0, 1.0)
 #define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
@@ -47,11 +48,15 @@ vec4 prepareCursor(float radius, vec4 color) {
 }
 
 void main() {
-    vec4 tex1 = texture(uSampler0, vTexCoord); // solid pass
-    vec4 tex2 = texture(uSampler1, vTexCoord); // wireframe pass
-    vec4 tex3 = texture(uSampler2, vTexCoord); // gizmo pass
+    vec4 solid = texture(uSampler0, vTexCoord); // solid pass
+    vec4 wireframe = texture(uSampler1, vTexCoord); // wireframe pass
+    vec4 gizmo = texture(uSampler2, vTexCoord); // gizmo pass
 
+    // fragColor = solid;
     // // Show both with additive blend
-    vec4 solidWireframe = mix(tex1, tex2, tex2.a);
-    fragColor = mix(BLACK, solidWireframe, tex3.a); // 0.5 for blending
+    vec4 solidWireframe = mix(solid, wireframe, wireframe.a);
+    fragColor = solidWireframe;
+    // fragColor.a = 1.0; // Ensure full opacity
+    // fragColor = mix(BLACK, fragColor, gizmo.a); // Add gizmo pass with some transparency
+    // fragColor = length(solid.rgb) < 0.01 ? vec4(vec3(0.0), 1.0) : fragColor; // discard if solid pass is too dark
 }

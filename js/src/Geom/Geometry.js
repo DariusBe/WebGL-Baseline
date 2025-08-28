@@ -12,10 +12,8 @@ export class Geometry {
   geomVAO = null; // WebGL Vertex Array Object (VAO) for this geometry
   wireframeVAO = null; // WebGL VAO for wireframe rendering
   normalsVAO = null; // WebGL VAO for normals rendering
-
   AttributesPoolBuffer = null; // Buffer for attributes that are not separate
   attributeList = {}; // List of attributes with their locations and properties
-
   // Initialize all used instance properties to avoid runtime errors
   combinedGeom = [];
   mtl_data = null;
@@ -30,15 +28,11 @@ export class Geometry {
   lineVertices = []; // for line-arranged vertices
   parameterSpaceVertices = [];
   smoothShading = null;
-
   primitiveCount = this.faces.length * 3; // Number of primitives (triangles) in the geometry
-
   // Geometry for wireframe rendering consisting of vertices and barycentric coordinates
   wireframeGeom = []; // Geometry for wireframe rendering
-
   // Add half-edge mesh property
   halfEdgeMesh = null;
-
   /**
    * Creates a new Geometry instance.
    *
@@ -53,33 +47,26 @@ export class Geometry {
     this.geomVAO = null;
     this.wireframeVAO = null;
     this.attributeList = new Map();
-
     // index is the buffer that contains the indices of the vertices
     if (indexBuffer) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     }
-
     gl.bindVertexArray(null);
-
     this.halfEdgeMesh = new HalfEdgeMesh();
     this.init(attributes, indexBuffer);
   }
-
   init(attributes = null, indexBuffer = null) {
     const gl = GLContext.getInstance().gl;
     this.geomVAO = new VAO("Geometry_VAO", attributes, "DYNAMIC_DRAW");
-
     if (attributes !== null && attributes instanceof Array) {
       this.prepareAttributes(attributes);
     }
-
     this.wireframeAttributes = new Map();
     this.wireframeVAO = new VAO(
       "Wireframe_VAO",
       this.wireframeAttributes,
       "DYNAMIC_DRAW"
     );
-
     gl.bindVertexArray(this.geomVAO.vao);
     if (indexBuffer) {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -88,15 +75,12 @@ export class Geometry {
       this.geomVAO.indexBuffer = null;
     }
   }
-
   bind(vao = this.geomVAO) {
     vao.bind();
   }
-
   unbind(vao = this.geomVAO) {
     vao.unbind();
   }
-
   /* Prepare vertex attributes for the geometry.
    * @param {Array<Attribute>} attributes - The attributes to prepare.
    */
@@ -109,7 +93,6 @@ export class Geometry {
       this.attributeList.set(attribute.name, attribute);
     }
   };
-
   /**
    * Parse the .mtl-file of a wavefront model
    * @param {string} mtlSrc The path to the .mtl-file
@@ -120,7 +103,6 @@ export class Geometry {
   parseMTL = async (mtlSrc, objSrc, verbose = true) => {
     this.materialAssociatedFaces = new Map();
     this.currentMaterial = null;
-
     const then = performance.now();
     const response = await fetch(mtlSrc);
     var content = await response.text();
@@ -142,12 +124,10 @@ export class Geometry {
       }
     }
     console.info("parsed MTL:", Object.keys(list).length, "materials");
-
     const newResponse = await fetch(objSrc);
     content = await newResponse.text();
     const objectName = content.split("o")[2].split("v")[0].trimEnd();
     var lines = content.split("\n");
-
     for (var i = 0; i < lines.length; i++) {
       const key = lines[i].split(" ")[0];
       const value = lines[i].split(key + " ")[1];
@@ -159,7 +139,6 @@ export class Geometry {
           lines[i]
         );
       }
-
       switch (key) {
         case "#":
           break;
@@ -171,7 +150,6 @@ export class Geometry {
         case "f":
           // faces.push(value);
           // objDescription['faces'].push(value);
-
           const face = value
             .trim()
             .split(" ")
@@ -192,7 +170,6 @@ export class Geometry {
     }
     return list;
   };
-
   /**
    * Parse the .mtl-file of a wavefront model
    * @param {string} src The path to the .mtl-file
@@ -206,7 +183,6 @@ export class Geometry {
     const content = await response.text();
     const objectName = content.split("o")[2].split("v")[0].trimEnd();
     var lines = content.split("\n");
-
     for (var i = 0; i < lines.length; i++) {
       const key = lines[i].split(" ")[0];
       const value = lines[i].split(key + " ")[1];
@@ -294,12 +270,10 @@ export class Geometry {
           break;
       }
     }
-
     let mtl_data = null;
     if (mtl_src != null) {
       this.mtl_data = await this.parseMTL(mtl_src, src, verbose);
     }
-
     for (const [lineIndex, line] of Object.entries(this.lineElements)) {
       // Process each line element
       // console.warn(lineIndex, "Line Element:", line);
@@ -312,27 +286,22 @@ export class Geometry {
       ];
       this.lineVertices.push(...lineSegment[0], ...lineSegment[1]);
     }
-
     for (const face in Object.entries(this.faces)) {
       // f v_1/X/X     v_2/X/X     v_3/X/X
       let v1_location = this.faces[face][0][0] - 1;
       let v2_location = this.faces[face][1][0] - 1;
       let v3_location = this.faces[face][2][0] - 1;
-
       // f X/vt_1/X    X/vt_2/X    X/vt_3/X
       const vt1_location = this.faces[face][0][1] - 1;
       const vt2_location = this.faces[face][1][1] - 1;
       const vt3_location = this.faces[face][2][1] - 1;
-
       // equals f X/X/vn_1    X/X/vn_2    X/X/vn_3
       const vn1_location = this.faces[face][0][2] - 1;
       const vn2_location = this.faces[face][1][2] - 1;
       const vn3_location = this.faces[face][2][2] - 1;
-
       const v_1 = this.vertices[v1_location];
       const v_2 = this.vertices[v2_location];
       const v_3 = this.vertices[v3_location];
-
       var vt_1 = 0;
       var vt_2 = 0;
       var vt_3 = 0;
@@ -357,12 +326,10 @@ export class Geometry {
       const nor_a = this.vertexNormals[vn1_location];
       const nor_b = this.vertexNormals[vn2_location];
       const nor_c = this.vertexNormals[vn3_location];
-
       // Determine color for this face
       let colR = Math.random();
       let colG = Math.random();
       let colB = Math.random();
-
       // Find the material for this face
       if (this.materialAssociatedFaces && this.mtl_data) {
         for (const [material, materialFaces] of this.materialAssociatedFaces) {
@@ -379,7 +346,6 @@ export class Geometry {
                   vertex[2] === currentFaceData[idx][2]
               )
           );
-
           if (faceMatches && this.mtl_data[material]?.Kd) {
             colR = parseFloat(this.mtl_data[material].Kd[0]);
             colG = parseFloat(this.mtl_data[material].Kd[1]);
@@ -388,11 +354,9 @@ export class Geometry {
           }
         }
       }
-
       const barycentric_1 = [1.0, 0.0, 0.0];
       const barycentric_2 = [0.0, 1.0, 0.0];
       const barycentric_3 = [0.0, 0.0, 1.0];
-
       const rgb = [colR, colG, colB];
       this.combinedGeom.push(
         ...v_1,
@@ -400,13 +364,11 @@ export class Geometry {
         ...nor_a,
         ...rgb,
         ...barycentric_1,
-
         ...v_2,
         ...vt_2,
         ...nor_b,
         ...rgb,
         ...barycentric_2,
-
         ...v_3,
         ...vt_3,
         ...nor_c,
@@ -417,7 +379,6 @@ export class Geometry {
     }
     // this.buildHalfEdgeMesh();
     // }
-
     if (verbose) {
       console.groupCollapsed("parsed OBJ-file");
       console.log("Object Name:", objectName);
@@ -452,7 +413,6 @@ export class Geometry {
       console.groupEnd();
     }
   };
-
   prepareOBJAttributes = () => {
     // is this.combined depth = 1?
     if (this.combinedGeom.length == 0) {
@@ -461,7 +421,6 @@ export class Geometry {
       );
       return;
     }
-
     if (this.combinedGeom.length != 0) {
       const defaultAttributes = [
         new Attribute(
@@ -518,7 +477,6 @@ export class Geometry {
       this.prepareAttributes(defaultAttributes);
     }
   };
-
   updateCombinedList = (
     vertices = null,
     texCoords = null,
@@ -539,13 +497,11 @@ export class Geometry {
       );
       return;
     }
-
     // Use safe lengths for each attribute array, falling back to 0 if null
     const verticesLength = Array.isArray(vertices) ? vertices.length : 0;
     const texCoordsLength = Array.isArray(texCoords) ? texCoords.length : 0;
     const normalsLength = Array.isArray(normals) ? normals.length : 0;
     const colorsLength = Array.isArray(colors) ? colors.length : 0;
-
     if (vertices !== null) {
       // Ensure vertices is a flat array
       if (!Array.isArray(vertices[0])) {
@@ -645,7 +601,6 @@ export class Geometry {
       `Geometry.updateCombinedList: Updated combined list with ${this.combinedGeom.length} components.`
     );
   };
-
   // Add method to build half-edge mesh after OBJ parsing
   buildHalfEdgeMesh = () => {
     if (this.vertices.length === 0 || this.faces.length === 0) {
@@ -654,14 +609,12 @@ export class Geometry {
       );
       return;
     }
-
     this.halfEdgeMesh.buildFromOBJ(
       this.vertices,
       this.faces,
       this.texCoords,
       this.vertexNormals
     );
-
     console.info(
       `Built half-edge mesh with ${this.halfEdgeMesh.vertices.length} vertices, ${this.halfEdgeMesh.faces.length} faces, and ${this.halfEdgeMesh.halfEdges.length} half-edges.`
     );

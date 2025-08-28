@@ -144,7 +144,7 @@ export class GLContext {
     this.updateGlobalUniform("uProjection", this.uProjection);
 
     // set up event listeners
-    // this.canvas.addEventListener("click", this.onclick);
+    this.canvas.addEventListener("click", this.onclick);
     this.canvas.addEventListener("touchmove", this.touchmove);
     this.canvas.addEventListener("mousemove", this.onmousemove);
     window.addEventListener("resize", this.onresize);
@@ -246,21 +246,21 @@ export class GLContext {
 
     this.updateGlobalUniform("uMouse", this.uMouse);
   };
-  touchmove = (e) => {
-    console.log(this.canvas.width, this.canvas.height);
+  // touchmove = (e) => {
+  //   console.log(this.canvas.width, this.canvas.height);
 
-    e.preventDefault(); // prevent scrolling
-    var touch = e.touches[0]; // get first touch point
-    // update mouse uniform
-    const pressedButton = 1.0;
-    const mouse = new Float32Array([
-      touch.clientX,
-      touch.clientY,
-      pressedButton,
-    ]);
+  //   e.preventDefault(); // prevent scrolling
+  //   var touch = e.touches[0]; // get first touch point
+  //   // update mouse uniform
+  //   const pressedButton = 1.0;
+  //   const mouse = new Float32Array([
+  //     touch.clientX,
+  //     touch.clientY,
+  //     pressedButton,
+  //   ]);
 
-    this.updateGlobalUniform("uMouse", mouse);
-  };
+  //   this.updateGlobalUniform("uMouse", mouse);
+  // };
   onresize = () => {
     const shaderList = this.shaderList;
     const gl = this.gl;

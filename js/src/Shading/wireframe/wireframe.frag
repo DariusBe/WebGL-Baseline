@@ -60,9 +60,10 @@ void main() {
     //     fragColor = ORANGE;
     //     // discard;
     // }
+
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 col = BLACK;
-    float lineWidth = 0.1;
+    float lineWidth = 0.01;
     if (uSelected) {
         col = ORANGE;
         lineWidth = 0.095;

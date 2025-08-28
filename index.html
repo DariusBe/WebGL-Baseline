@@ -6,12 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebGL2 Baseline</title>
     <link rel="stylesheet" href="css/main.css" />
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/testmain.js"></script>
     <link rel="icon" href="data:," />
     <script src="gl-matrix-min.js"></script>
   </head>
 
   <body>
+    <div class="menubar">
+      <img src="resources/img/logo_0.5x.png" id="logo" />
+      <div id="menu_items">
+        <button id="file">File</button>
+        <button id="edit">Edit</button>
+        <button id="selection">Selection</button>
+        <button id="view">View</button>
+        <button id="window">Window</button>
+        <button id="help">Help</button>
+      </div>
+    </div>
+    <div class="menu_popup"></div>
     <canvas id="webgl-canvas" width="7020" height="4965"></canvas>
     <div class="stats">
       <p class="cycle">0</p>
@@ -20,6 +32,7 @@
     </div>
     <script>
       const canvas = document.getElementById("webgl-canvas");
+      const menu_popup = document.querySelector(".menu_popup");
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     </script>

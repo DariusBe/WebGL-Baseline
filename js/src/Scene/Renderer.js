@@ -45,6 +45,7 @@ export class Renderer {
   constructor() {
     /** @type {WebGLRenderingContext} */
     this.gl = GLContext.getInstance().gl;
+    this.canvas = this.gl.canvas;
     // set camera viewport
     // this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
 
@@ -80,10 +81,27 @@ export class Renderer {
     this.getUUID = () => {
       return _uuid;
     };
+
+    this.standardView = {
+      x0: 0,
+      y0: 0,
+      xMax: this.canvas.width,
+      yMax: this.canvas.height,
+    };
   }
 
-  render(scene, camera, target = null, mode = "solid") {
+  render(
+    scene,
+    camera,
+    target = null,
+    mode = "solid",
+    view = this.standardView
+  ) {
     const gl = this.gl;
+
+    // for (const x of scene.getHierarchyList()) {
+    //   console.warn(x.name);
+    // }
 
     // Bind target and set viewport
     if (target instanceof RenderTarget) {
@@ -92,6 +110,8 @@ export class Renderer {
     } else {
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
+    const { x0, y0, xMax, yMax } = view;
+    gl.viewport(x0, y0, xMax, yMax);
 
     // Set up state based on mode
     this.depthTest ? gl.enable(gl.DEPTH_TEST) : gl.disable(gl.DEPTH_TEST);
@@ -129,7 +149,7 @@ export class Renderer {
     switch (mode) {
       case "gizmo":
       case "gizmos":
-        for (const obj of scene.getHierarchyList()) {
+        for (const [objName, obj] of Object.entries(scene.getHierarchyList())) {
           if (
             obj.constructor.name === "Gizmo" ||
             obj.constructor.name === "Lamp" ||
@@ -152,7 +172,7 @@ export class Renderer {
     // if a target is provided, unbind it
     if (target instanceof RenderTarget) {
       target.unbind();
-      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      gl.viewport(x0, y0, xMax, yMax);
     }
     // unbind any resources
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -163,7 +183,6 @@ export class Renderer {
 
   _renderNode(object, camera, parentTransform, mode = "solid") {
     const gl = this.gl;
-
     const transform = glMatrix.mat4.multiply(
       glMatrix.mat4.create(),
       parentTransform,
@@ -274,8 +293,9 @@ export class Renderer {
       gl.useProgram(null);
     }
     // Recurse into children
-    for (const child of object.children || []) {
-      this._renderNode(child, camera, transform, mode);
+    for (const [_, child] of object.children || []) {
+      // console.log("current", child.name, child.transform);
+      if (child) this._renderNode(child, camera, transform, mode);
     }
   }
 
@@ -297,6 +317,7 @@ export class Renderer {
     // Bind textures to units
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
+      // console.warn(texture.name);
       if (texture instanceof Texture) {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, texture.webGLTexture);

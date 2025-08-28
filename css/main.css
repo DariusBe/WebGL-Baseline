@@ -1,9 +1,19 @@
+/*variables*/
+:root {
+  --menubar-height: 40px;
+  --menubar-bg-color: rgb(15, 15, 15);
+  --menubar-text-color: white;
+  --menubar-highlight-color: rgb(0, 82, 149);
+}
+
 body {
   margin: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  /* prevent scroll */
+  overflow: hidden;
 }
 
 canvas {
@@ -20,19 +30,94 @@ canvas {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  /* prevent swipe right to go back */
+  overscroll-behavior: contain;
+  /* prevent pinch zoom */
+  touch-action: none;
+  /* prevent text selection */
+  user-select: none;
+}
+
+.menubar {
+  display: flex;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: var(--menubar-height);
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: var(--menubar-bg-color);
+}
+.menubar,
+.menu_popup {
+  button {
+    color: var(--menubar-text-color);
+    background-color: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    border: none;
+    border: 2px solid transparent;
+    padding: 5px 10px 5px 10px;
+  }
+}
+.menubar,
+.menu_popup {
+  button:hover {
+    color: white;
+    background-color: var(--menubar-highlight-color);
+    border-radius: 5px;
+    box-shadow: none;
+    text-shadow: none;
+    border: none;
+    padding: 5px 10px 5px 10px;
+    border: 2px solid black;
+  }
+}
+.menubar,
+.menu_popup {
+  button:disabled {
+    color: gray;
+    background-color: transparent;
+  }
+}
+
+.menu_popup button {
+  display: flex;
+  justify-content: first baseline;
+  align-items: center;
+  width: 100%;
+}
+.menubar #logo {
+  height: 30px;
+  padding: 5px 45px 5px 20px;
+}
+
+.menu_popup {
+  border-radius: 0px 0px 4px 4px;
+  visibility: hidden;
+  position: fixed;
+  top: var(--menubar-height);
+  left: 100px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  background-color: var(--menubar-bg-color);
+  padding: 5px;
+  z-index: 1;
 }
 
 .stats {
-  right: 5px;
-  top: 5px;
+  left: 5px;
+  bottom: 5px;
   font-size: xx-small;
   position: fixed;
   display: flex;
   flex-direction: row;
-  background-color: rgba(0, 0, 0, 0.25);
   color: rgb(255, 255, 255);
   border-radius: 15px;
-  backdrop-filter: blur(2.5px);
 }
 .stats p {
   padding-inline: 15px;
