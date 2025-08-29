@@ -1,13 +1,15 @@
 class ContextButton {
-  constructor(action, isDisabled) {
+  constructor(action, isEnabled) {
     this.action = action;
-    this.isDisabled = isDisabled;
+    this.isEnabled = isEnabled;
   }
 }
 
 export class Topbar extends EventTarget {
   constructor() {
     super();
+    this.element = document.querySelector(".topbar");
+    this.height = this.element.clientHeight;
     this.eventRegistry = new Set();
     this.menu_popup = document.querySelector(".menu_popup");
     this.fileContext = new Map();
@@ -181,7 +183,7 @@ export class Topbar extends EventTarget {
       for (const [buttonLabel, buttonProps] of contextDescription) {
         const button = document.createElement("button");
         // set button inactive if action is not allowed
-        button.disabled = !buttonProps.isDisabled;
+        button.disabled = !buttonProps.isEnabled;
         button.textContent = buttonLabel;
 
         button.addEventListener("click", buttonProps.action);

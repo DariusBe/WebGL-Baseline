@@ -10,6 +10,78 @@ import { Material } from "../Shading/Material.js";
 import { Texture } from "../Shading/Texture.js";
 import { Utils } from "../Utils/Utils.js";
 
+class Separator extends EventTarget {
+  constructor(offset) {
+    super();
+    this.element = document.createElement("div");
+    this.element.id = "separator";
+    this.dirty = false; // = needs redrawing
+
+    // Add class for styling
+    this.element.classList.add("separator");
+    this.setPosition(offset || 200, 0); // Default position if none provided
+    document.body.appendChild(this.element);
+    this.width = this.element.offsetWidth;
+
+    const stop = document.createElement("div");
+    stop.classList.add("separator-stop");
+    this.element.appendChild(stop);
+    this.element.appendChild(stop.cloneNode(true));
+    this.element.appendChild(stop.cloneNode(true));
+
+    // when dirty changes, dispatch an event
+    Object.defineProperty(this, "dirty", {
+      set(value) {
+        this._dirty = value;
+        this.element.dispatchEvent(new CustomEvent("dirty", { detail: value }));
+      },
+      get() {
+        return this._dirty;
+      },
+    });
+
+    let dragging = false;
+
+    this.element.addEventListener("mousedown", (e) => {
+      dragging = true;
+      document.body.style.cursor = "col-resize";
+      e.preventDefault();
+
+      const onMouseMove = (e) => {
+        if (!dragging) return;
+        const newX = Math.max(0, e.clientX); // Clamp to left edge
+        this.setPosition(newX);
+        this.element.dispatchEvent(
+          new CustomEvent("separator-move", { detail: { offset: newX } })
+        );
+      };
+
+      const onMouseUp = () => {
+        dragging = false;
+        document.body.style.cursor = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+        this.element.dispatchEvent(
+          new CustomEvent("separator-stop", {
+            detail: { offset: this.element.offsetLeft },
+          })
+        );
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    });
+  }
+
+  setPosition = (offset) => {
+    this.element.style.left = `${offset}px`;
+  };
+
+  remove = () => {
+    this.element.remove();
+  };
+}
+
 export class Editor {
   constructor() {
     /** @type {WebGLRenderingContext} */
@@ -17,18 +89,26 @@ export class Editor {
     this.gl = this.glContext.gl;
     this.canvas = this.gl.canvas;
     this.sceneHistory = [];
-
     this.viewports = [];
-    const viewport3D = new Viewport(500, this.canvas.height);
-    this.viewports.push(viewport3D);
+    this.separators = [];
+
+    this.viewport3D_1 = new Viewport(this.canvas.width, this.canvas.height);
+    this.viewports.push(this.viewport3D_1);
+
+    // this.viewport3D.setSize(200, 200);
 
     /* UI */
     this.topbar = new Topbar();
     this.sidepanel = new Sidepanel();
+    this.updateSeparator();
+
     /* Globals */
     this.scene = new Scene();
     this.registerUndoableStep();
     this.renderer = new Renderer();
+
+    /* GUI Listeners */
+    this.prepareListeners();
 
     // // Add this before creating render targets
     // const devicePixelRatio = window.devicePixelRatio || 1;
@@ -37,7 +117,58 @@ export class Editor {
     // // Update canvas actual size
     // this.gl.canvas.width = canvasWidth;
     // this.gl.canvas.height = canvasHeight;
+  }
 
+  render = () => {
+    this.glContext.updateUniforms();
+    for (const view of this.viewports) {
+      // console.error(view.solidPass.targetTexture);
+
+      view.render(this.scene, this.renderer);
+
+      this.renderer.renderScreenQuad([
+        view.solidPass.targetTexture,
+        view.wireframePass.targetTexture,
+      ]);
+    }
+    requestAnimationFrame(this.render);
+  };
+
+  updateSeparator = () => {
+    // iterate viewport list with index
+
+    if (this.viewports.length > 1) {
+      this.topbar.windowContext.get("Collapse").isEnabled = true;
+    }
+
+    for (let i = 1; i < this.viewports.length; i++) {
+      const viewportOffset_left = this.viewports[i].viewportArea.x0;
+      let separator = new Separator(viewportOffset_left);
+      this.separators.push(separator);
+
+      separator.element.addEventListener("separator-move", (e) => {
+        const offset = e.detail.offset;
+        this.viewports[i].viewportArea.x0 = offset;
+        this.viewports[i].viewportArea.xMax = this.canvas.width - offset;
+
+        this.viewports[i].drawDebuggingOutlines();
+      });
+
+      separator.element.addEventListener("separator-stop", (e) => {
+        const offset = e.detail.offset;
+
+        this.viewports[i].resize(
+          this.canvas.width - separator.width - offset,
+          this.canvas.height,
+          offset + separator.width,
+          0
+        );
+        this.viewports[i].removeDebuggingOutlines();
+      });
+    }
+  };
+
+  prepareListeners = () => {
     this.topbar.addEventListener("file_new", (e) => {
       console.log("Editor received new file event");
       console.log(e.detail);
@@ -86,44 +217,27 @@ export class Editor {
           res.activeMaterial = resMaterial;
 
           this.scene.add(res);
-          /*
-          mars.transform.setScale(0.1, 0.1, 0.1);
-          const marsTex = new Texture(
-            "MarsTexture",
-            await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),
-            1440,
-            720,
-            "RGBA16F",
-            "LINEAR",
-            "RGBA",
-            "FLOAT",
-            "CLAMP_TO_EDGE"
-          );
-          const marsMaterial = new Material("MarsMaterial", null, null, marsTex);
-          mars.addMaterial(marsMaterial, true);
-          mars.solidMaterial = marsMaterial; // Set solid material
-          mars.activeMaterial = marsMaterial;
-          mars.name = "Mars";
-          editor.scene.add(mars);
-          */
         });
       }
     });
-  }
 
-  render = () => {
-    this.glContext.updateUniforms();
-    for (const view of this.viewports) {
-      // console.error(view.solidPass.targetTexture);
+    this.topbar.addEventListener("window_split", (e) => {
+      const count = this.viewports.length;
+      if (count >= 2) return; // max 4 viewports for now
+      const viewport3D_2 = new Viewport(this.canvas.width, this.canvas.height);
+      this.viewports.push(viewport3D_2);
+      this.updateSeparator();
+    });
 
-      view.render(this.scene, this.renderer);
-
-      this.renderer.renderScreenQuad([
-        view.solidPass.targetTexture,
-        view.wireframePass.targetTexture,
-      ]);
-    }
-    requestAnimationFrame(this.render);
+    this.topbar.addEventListener("window_collapse", (e) => {
+      const count = this.viewports.length;
+      if (count <= 1) return; // at least one viewport
+      this.viewports.pop();
+      this.updateSeparator();
+      // remove all separators
+      this.separators.forEach((separator) => separator.remove());
+      this.separators = [];
+    });
   };
 
   registerUndoableStep = () => {
