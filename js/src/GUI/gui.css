@@ -1,0 +1,131 @@
+* {
+  --topbar-height: 40px;
+  --ui-bg-color: rgba(15, 15, 15, 0.65);
+  --ui-text-color: white;
+  --ui-highlight-color: #005295bf;
+  --ui-padding: 10px;
+  --ui-border-radius: 8px;
+  --ui-button-border-radius: 5px;
+  --ui-container-shadow: 0px 0px 10px rgb(0, 0, 0, 0.2);
+  --ui-container-blur: 10px;
+}
+
+.topbar {
+  display: flex;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  width: 100%;
+  height: var(--topbar-height);
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: var(--ui-bg-color);
+  z-index: 5;
+  backdrop-filter: blur(var(--ui-container-blur));
+  box-shadow: var(--ui-container-shadow);
+}
+.topbar,
+.menu_popup {
+  button {
+    color: var(--ui-text-color);
+    background-color: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    border: none;
+    padding: 5px 10px 5px 10px;
+  }
+}
+.topbar,
+.menu_popup {
+  button:hover {
+    color: white;
+    background-color: var(--ui-highlight-color);
+    border-radius: var(--ui-button-border-radius);
+    box-shadow: none;
+    text-shadow: none;
+    border: none;
+  }
+}
+.topbar,
+.menu_popup {
+  button:disabled {
+    color: gray;
+    background-color: transparent;
+  }
+}
+
+.menu_popup button {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 100px;
+}
+
+.topbar #logo {
+  width: 70px;
+  padding: 5px 35px 5px 15px;
+}
+
+.menu_popup {
+  border-radius: 0px 0px var(--ui-border-radius) var(--ui-border-radius);
+  visibility: hidden;
+  position: fixed;
+  top: var(--topbar-height);
+  left: 100px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  flex-direction: column;
+  background-color: var(--ui-bg-color);
+  padding: 5px;
+  z-index: 2;
+}
+
+.sidepanel {
+  position: fixed;
+  width: 20px;
+
+  top: calc(var(--topbar-height));
+  left: 0px;
+  background-color: var(--ui-bg-color);
+  backdrop-filter: blur(var(--ui-container-blur));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: var(--ui-padding);
+  border-radius: 0px 0px var(--ui-border-radius) 0px;
+  z-index: 1;
+}
+
+.sidepanel.minimized {
+  padding: 12px 15px 10px 15px; /*top right bottom left*/
+  width: 20px;
+  content: "...";
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: 0px 0px var(--ui-border-radius) 0px;
+  z-index: 1;
+}
+.sidepanel .icon {
+  width: 32px;
+  padding: 5px;
+}
+.sidepanel .icon:hover {
+  background-color: var(--ui-highlight-color);
+  border-radius: var(--ui-button-border-radius);
+  box-shadow: none;
+  text-shadow: none;
+  border: none;
+}
+.icon svg > {
+  width: 25px;
+  /* change used colors */
+  fill: brown;
+  stroke: brown;
+  /* add other properties as needed */
+  stroke-width: 2px;
+}

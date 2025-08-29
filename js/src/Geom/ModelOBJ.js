@@ -97,10 +97,14 @@ export class ModelOBJ {
    * @returns {list} a list of layout // @TODO add description
    *
    */
-  parseMTL = async (src, verbose = true) => {
+  parseMTL = async (src, verbose = true, isFile = false) => {
     const then = performance.now();
-    const response = await fetch(src);
-    var content = await response.text();
+    var content = isFile ? src : "";
+    if (!isFile) {
+      var response = await fetch(src);
+      response = await fetch(src);
+      content = await response.text();
+    }
     content = content.split("\n");
     content = content.filter((x) => !(x.startsWith("#") || x == ""));
     var list = {};
@@ -135,11 +139,14 @@ export class ModelOBJ {
    * @param {string?} mtl_src Optionally, the path to an .mtl-file
    * @returns {ModelOBJ} a ModelOBJ object containing geometry lists
    */
-  parseOBJFile = async (src, verbose = false, mtl_src = "") => {
+  parseOBJFile = async (src, verbose = false, mtl_src = "", isFile = false) => {
     const then = performance.now();
-    const response = await fetch(src);
-    const content = await response.text();
-    // console.log(content);
+    var content = isFile ? src : "";
+    if (!isFile) {
+      const response = await fetch(src);
+      content = await response.text();
+      // console.log(content);
+    }
     const objectName = content.split("o")[2].split("v")[0].trimEnd();
     var lines = content.split("\n");
 

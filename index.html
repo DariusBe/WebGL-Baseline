@@ -6,14 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebGL2 Baseline</title>
     <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="js/src/GUI/gui.css" />
     <script type="module" src="js/testmain.js"></script>
     <link rel="icon" href="data:," />
     <script src="gl-matrix-min.js"></script>
   </head>
 
   <body>
-    <div class="menubar">
-      <img src="resources/img/logo_0.5x.png" id="logo" />
+    <div class="topbar">
+      <img src="resources/img/logo.svg" id="logo" />
       <div id="menu_items">
         <button id="file">File</button>
         <button id="edit">Edit</button>
@@ -24,6 +25,24 @@
       </div>
     </div>
     <div class="menu_popup"></div>
+    <div class="sidepanel">
+      <div class="section" id="section1">
+        <img src="resources/img/icon_solid.svg" class="icon" id="icon_solid" />
+        <img
+          src="resources/img/icon_wireframe.svg"
+          class="icon"
+          id="icon_wireframe"
+        />
+        <img
+          src="resources/img/icon_shaded.svg"
+          class="icon"
+          id="icon_shaded"
+        />
+        <img src="resources/img/icon_grid.svg" class="icon" id="icon_grid" />
+      </div>
+      <div class="section" id="section2"></div>
+    </div>
+
     <canvas id="webgl-canvas" width="7020" height="4965"></canvas>
     <div class="stats">
       <p class="cycle">0</p>

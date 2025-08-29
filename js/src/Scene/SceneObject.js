@@ -71,7 +71,8 @@ export class SceneObject {
   static createFromOBJ = async (
     objSrc,
     mtlSrc = null,
-    prepareAttribs = true
+    prepareAttribs = true,
+    isFile = false
   ) => {
     const obj = new SceneObject();
     obj.geometry.vertices = [];
@@ -85,7 +86,7 @@ export class SceneObject {
     obj.geometry.combinedGeom = [];
 
     try {
-      await obj.geometry.parseOBJFile(objSrc, mtlSrc);
+      await obj.geometry.parseOBJFile(objSrc, mtlSrc, true, isFile);
     } catch (error) {
       console.error("Error parsing OBJ file:", error);
     }

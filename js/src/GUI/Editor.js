@@ -1,15 +1,14 @@
 import { GLContext } from "../GL/GLContext.js";
+import { Topbar } from "./Topbar.js";
+import { Sidepanel } from "./Sidepanel.js";
+
 import { Renderer } from "../Scene/Renderer.js";
 import { Scene } from "../Scene/Scene.js";
 import { Viewport } from "./Viewport.js";
-
-class ContextButton {
-  constructor(action, isDisabled) {
-    this.action = action;
-    this.isDisabled = isDisabled;
-    this.label = "";
-  }
-}
+import { SceneObject } from "../Scene/SceneObject.js";
+import { Material } from "../Shading/Material.js";
+import { Texture } from "../Shading/Texture.js";
+import { Utils } from "../Utils/Utils.js";
 
 export class Editor {
   constructor() {
@@ -17,13 +16,18 @@ export class Editor {
     this.glContext = GLContext.getInstance();
     this.gl = this.glContext.gl;
     this.canvas = this.gl.canvas;
+    this.sceneHistory = [];
 
     this.viewports = [];
     const viewport3D = new Viewport(500, this.canvas.height);
     this.viewports.push(viewport3D);
 
+    /* UI */
+    this.topbar = new Topbar();
+    this.sidepanel = new Sidepanel();
     /* Globals */
     this.scene = new Scene();
+    this.registerUndoableStep();
     this.renderer = new Renderer();
 
     // // Add this before creating render targets
@@ -33,195 +37,79 @@ export class Editor {
     // // Update canvas actual size
     // this.gl.canvas.width = canvasWidth;
     // this.gl.canvas.height = canvasHeight;
-    this.prepareTopbar();
-  }
 
-  prepareTopbar = () => {
-    var menu_popupVisible = false;
+    this.topbar.addEventListener("file_new", (e) => {
+      console.log("Editor received new file event");
+      console.log(e.detail);
 
-    // const fileContext = new Map([
-    //   [
-    //     "New...",
-    //     [
-    //       () => {
-    //         console.log("// ADD FUNCTIONALITY FOR NEW HERE");
-    //       },
-    //       true,
-    //     ],
-    //   ],
-    //   [
-    //     "Import...",
-    //     [
-    //       () => {
-    //         console.log("// ADD FUNCTIONALITY FOR IMPORT HERE");
-    //       },
-    //       true,
-    //     ],
-    //   ],
-    // ]);
-    const fileContext = new Map([
-      [
-        "New...",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR NEW HERE");
-        }, true),
-      ],
-      [
-        "Import...",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR IMPORT HERE");
-        }, true),
-      ],
-    ]);
+      // show stylable prompt before deleting scene
+      const confirmDelete = confirm(
+        "Are you sure you want to delete the current scene?"
+      );
 
-    const editContext = new Map([
-      [
-        "Undo",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR UNDO HERE");
-        }, true),
-      ],
-      [
-        "Redo",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR REDO HERE");
-        }, true),
-      ],
-    ]);
-
-    const selectionContext = new Map([
-      [
-        "Select All",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR SELECT ALL HERE");
-        }, true),
-      ],
-      [
-        "Deselect All",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR DESELECT ALL HERE");
-        }, true),
-      ],
-    ]);
-
-    const viewContext = new Map([
-      [
-        "Toggle Wireframe",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR TOGGLE WIREFRAME HERE");
-        }, true),
-      ],
-      [
-        "Hide Extras",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR HIDE EXTRAS HERE");
-        }, true),
-      ],
-      [
-        "Reset Camera",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR RESET CAMERA HERE");
-        }, true),
-      ],
-    ]);
-
-    const windowContext = new Map([
-      [
-        "Split",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR SPLIT HERE");
-        }, true),
-      ],
-      [
-        "Collapse",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR COLLAPSE HERE");
-          console.log(this.viewports.length);
-        }, false),
-      ],
-    ]);
-
-    const helpContext = new Map([
-      [
-        "Documentation",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR DOCUMENTATION HERE");
-        }, true),
-      ],
-      [
-        "About",
-        new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR ABOUT HERE");
-        }, true),
-      ],
-    ]);
-
-    const prepareContext = (e, contextDescription) => {
-      for (const [buttonLabel, buttonProps] of contextDescription) {
-        const button = document.createElement("button");
-        // set button inactive if action is not allowed
-        button.disabled = !buttonProps.isDisabled;
-        button.textContent = buttonLabel;
-        button.addEventListener("click", buttonProps.action);
-        menu_popup[0].appendChild(button);
-        // menu_popup to float below button (aligning either left or right, depending on available space)
-        const menu_width = menu_popup[0].getBoundingClientRect().width;
-        const button_rect = e.target.getBoundingClientRect();
-
-        // Default: align left edge of popup with left edge of button
-        let left = button_rect.left;
-
-        // If not enough space to the right, align right edge of popup with right edge of button
-        if (left + menu_width > window.innerWidth) {
-          left = button_rect.right - menu_width;
-          // Prevent negative left value
-          if (left < 0) left = 0;
-        }
-        menu_popup[0].style.left = `${left}px`;
+      if (confirmDelete) {
+        this.scene = new Scene();
       }
-    };
+    });
 
-    const menu = document.getElementById("menu_items");
-    const menu_popup = document.getElementsByClassName("menu_popup");
-    for (const button of menu.children) {
-      button.addEventListener("mouseenter", (e) => {
-        // infer width of menu_popup
-        menu_popup[0].innerHTML = "";
+    this.topbar.addEventListener("file_import", (e) => {
+      const { contents, extension } = e.detail;
+      if (extension === "obj") {
+        // Pass contents directly to your parser
+        const obj = SceneObject.createFromOBJ(contents, null, true, true);
+        // resolve promise
+        obj.then(async (instance) => {
+          const res = instance;
+          if (res.name) {
+            res.name = "ImportedObj";
+          }
+          res.transform.setScale(0.05, 0.05, 0.05);
+          const resTexture = new Texture(
+            `${res.name}_Texture`,
+            await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),
+            1440,
+            720,
+            "RGBA16F",
+            "LINEAR",
+            "RGBA",
+            "FLOAT",
+            "CLAMP_TO_EDGE"
+          );
+          const resMaterial = new Material(
+            `${res.name}_Material`,
+            null,
+            null,
+            resTexture
+          );
+          res.addMaterial(resMaterial, true);
+          res.solidMaterial = resMaterial;
+          res.activeMaterial = resMaterial;
 
-        switch (e.target.id) {
-          case "file":
-            prepareContext(e, fileContext);
-            break;
-          case "edit":
-            prepareContext(e, editContext);
-            break;
-          case "selection":
-            prepareContext(e, selectionContext);
-            break;
-          case "view":
-            prepareContext(e, viewContext);
-            break;
-          case "window":
-            prepareContext(e, windowContext);
-            break;
-          case "help":
-            prepareContext(e, helpContext);
-            break;
-        }
-      });
-      button.addEventListener("click", (e) => {
-        // set menu_popup visibility
-        menu_popup[0].style.visibility = menu_popupVisible
-          ? "hidden"
-          : "visible";
-        menu_popupVisible = !menu_popupVisible;
-      });
-      canvas.addEventListener("click", (e) => {
-        menu_popup[0].style.visibility = "hidden";
-        menu_popupVisible = false;
-      });
-    }
-  };
+          this.scene.add(res);
+          /*
+          mars.transform.setScale(0.1, 0.1, 0.1);
+          const marsTex = new Texture(
+            "MarsTexture",
+            await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),
+            1440,
+            720,
+            "RGBA16F",
+            "LINEAR",
+            "RGBA",
+            "FLOAT",
+            "CLAMP_TO_EDGE"
+          );
+          const marsMaterial = new Material("MarsMaterial", null, null, marsTex);
+          mars.addMaterial(marsMaterial, true);
+          mars.solidMaterial = marsMaterial; // Set solid material
+          mars.activeMaterial = marsMaterial;
+          mars.name = "Mars";
+          editor.scene.add(mars);
+          */
+        });
+      }
+    });
+  }
 
   render = () => {
     this.glContext.updateUniforms();
@@ -236,6 +124,10 @@ export class Editor {
       ]);
     }
     requestAnimationFrame(this.render);
+  };
+
+  registerUndoableStep = () => {
+    this.sceneHistory.push(JSON.stringify(this.scene));
   };
 }
 

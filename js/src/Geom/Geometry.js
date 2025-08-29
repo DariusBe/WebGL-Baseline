@@ -100,12 +100,16 @@ export class Geometry {
    * @returns {list} a list of layout // @TODO add description
    *
    */
-  parseMTL = async (mtlSrc, objSrc, verbose = true) => {
+  parseMTL = async (mtlSrc, objSrc, verbose = true, isFile = false) => {
     this.materialAssociatedFaces = new Map();
     this.currentMaterial = null;
     const then = performance.now();
-    const response = await fetch(mtlSrc);
-    var content = await response.text();
+    var content = isFile ? mtlSrc : "";
+
+    if (!isFile) {
+      const response = await fetch(mtlSrc);
+      content = await response.text();
+    }
     content = content.split("\n");
     content = content.filter((x) => !(x.startsWith("#") || x == ""));
     var list = {};
@@ -177,10 +181,18 @@ export class Geometry {
    * @param {string?} mtl_src Optionally, the path to an .mtl-file
    * @returns {ModelOBJ} a ModelOBJ object containing geometry lists
    */
-  parseOBJFile = async (src, mtl_src = null, verbose = false) => {
+  parseOBJFile = async (
+    src,
+    mtl_src = null,
+    verbose = false,
+    isFile = false
+  ) => {
+    var content = isFile ? src : "";
     const then = performance.now();
-    const response = await fetch(src);
-    const content = await response.text();
+    if (!isFile) {
+      const response = await fetch(src);
+      content = await response.text();
+    }
     const objectName = content.split("o")[2].split("v")[0].trimEnd();
     var lines = content.split("\n");
     for (var i = 0; i < lines.length; i++) {
