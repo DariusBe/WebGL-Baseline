@@ -10,7 +10,7 @@ export class Topbar extends EventTarget {
     super();
     this.element = document.querySelector(".topbar");
     this.height = this.element.clientHeight;
-    this.eventRegistry = new Set();
+    this.eventRegistry = new Set(); // is supposed to store a list of all available custom events
     this.menu_popup = document.querySelector(".menu_popup");
     this.fileContext = new Map();
     this.editContext = new Map();
@@ -18,12 +18,17 @@ export class Topbar extends EventTarget {
     this.viewContext = new Map();
     this.windowContext = new Map();
     this.helpContext = new Map();
+    this.menu_popupVisbible = false;
+
     this.prepare();
   }
 
-  prepare = () => {
-    var menu_popupVisible = false;
+  setMenu_popupVisibility(value) {
+    this.menu_popup.style.visibility = value ? "visible" : "hidden";
+    this.menu_popupVisible = value;
+  }
 
+  prepare = () => {
     this.fileContext = new Map([
       [
         "New",
@@ -186,7 +191,10 @@ export class Topbar extends EventTarget {
         button.disabled = !buttonProps.isEnabled;
         button.textContent = buttonLabel;
 
-        button.addEventListener("click", buttonProps.action);
+        button.addEventListener("click", () => {
+          buttonProps.action();
+          this.setMenu_popupVisibility(false);
+        });
         // get event listener
         menu_popup[0].appendChild(button);
         // menu_popup to float below button (aligning either left or right, depending on available space)
@@ -235,15 +243,10 @@ export class Topbar extends EventTarget {
         }
       });
       button.addEventListener("click", (e) => {
-        // set menu_popup visibility
-        menu_popup[0].style.visibility = menu_popupVisible
-          ? "hidden"
-          : "visible";
-        menu_popupVisible = !menu_popupVisible;
+        this.setMenu_popupVisibility(!this.menu_popupVisible);
       });
       canvas.addEventListener("click", (e) => {
-        menu_popup[0].style.visibility = "hidden";
-        menu_popupVisible = false;
+        this.setMenu_popupVisibility(false);
       });
     }
   };
