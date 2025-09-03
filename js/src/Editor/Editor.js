@@ -103,7 +103,7 @@ export class Editor {
     this.topbar = new Topbar();
     // this.sidepanel = new Sidepanel();
     this.aboutPopup = new AboutPopup();
-    this.updateSeparator();
+    this.updateViewportsOnDrag();
 
     /* Globals */
     this.scene = new Scene();
@@ -138,7 +138,7 @@ export class Editor {
     requestAnimationFrame(this.render);
   };
 
-  updateSeparator = () => {
+  updateViewportsOnDrag = () => {
     // iterate viewport list with index
 
     if (this.viewports.length > 1) {
@@ -194,11 +194,30 @@ export class Editor {
         const deltaX = e.movementX;
         const deltaY = e.movementY;
 
-        this.viewports[0].mainCamera.orbitAround(
-          deltaX,
-          deltaY,
-          glMatrix.vec3.fromValues(0, 0, 0)
-        );
+        if (this.viewports.length > 1) {
+          const viewportLeftArea = this.viewports[0].viewportArea;
+          const viewportRightArea = this.viewports[1].viewportArea;
+          // if cursor inside right viewport
+          if (e.clientX > viewportRightArea.x0) {
+            this.viewports[1].mainCamera.orbitAround(
+              deltaX,
+              deltaY,
+              glMatrix.vec3.fromValues(0, 0, 0)
+            );
+          } else {
+            this.viewports[0].mainCamera.orbitAround(
+              deltaX,
+              deltaY,
+              glMatrix.vec3.fromValues(0, 0, 0)
+            );
+          }
+        } else {
+          this.viewports[0].mainCamera.orbitAround(
+            deltaX,
+            deltaY,
+            glMatrix.vec3.fromValues(0, 0, 0)
+          );
+        }
       } else {
         this.canvas.style.cursor = "crosshair";
       }
@@ -265,7 +284,7 @@ export class Editor {
       }
       const viewport3D_2 = new Viewport(this.canvas.width, this.canvas.height);
       this.viewports.push(viewport3D_2);
-      this.updateSeparator();
+      this.updateViewportsOnDrag();
     });
 
     this.topbar.addEventListener("window_collapse", (e) => {
@@ -277,7 +296,7 @@ export class Editor {
 
       // remove from viewports array
       this.viewports.pop();
-      this.updateSeparator();
+      this.updateViewportsOnDrag();
       // remove all separators
       this.separators.forEach((separator) => separator.remove());
       this.separators = [];
