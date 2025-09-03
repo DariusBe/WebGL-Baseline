@@ -11,7 +11,9 @@ export class Camera {
     up = null,
     fov = 45,
     near = 0.1,
-    far = 100
+    far = 100,
+    viewportWidth = null,
+    viewportHeight = null
   ) {
     this.name = name;
     this.transform = transform || new Transform();
@@ -21,7 +23,9 @@ export class Camera {
     /** @type {WebGLRenderingContext} */
     this.gl = GLContext.getInstance().gl;
     this.canvas = this.gl.canvas;
-    this.aspectRatio = this.canvas.width / this.canvas.height;
+    this.viewportWidth = viewportWidth || this.canvas.width;
+    this.viewportHeight = viewportHeight || this.canvas.height;
+    this.aspectRatio = this.viewportWidth / this.viewportHeight;
     this.near = near;
     this.far = far;
 
@@ -31,6 +35,49 @@ export class Camera {
       return _uuid;
     };
   }
+
+  // ...existing code...
+  orbitAround(deltaX, deltaY, CoR, sensitivity = 0.5) {
+    const vec3 = glMatrix.vec3;
+    const quat = glMatrix.quat;
+    const toRadian = (deg) => (deg * Math.PI) / 180;
+
+    // Store yaw/pitch as properties for smooth orbit
+    this._yaw = (this._yaw || 0) - deltaX * sensitivity;
+    this._pitch = (this._pitch || 0) - deltaY * sensitivity;
+
+    // Create yaw and pitch quaternions
+    const yawQuat = quat.create();
+    quat.setAxisAngle(yawQuat, [0, 1, 0], toRadian(this._yaw));
+
+    const pitchQuat = quat.create();
+    quat.setAxisAngle(pitchQuat, [1, 0, 0], toRadian(this._pitch));
+
+    // Combine yaw and pitch
+    const orbitQuat = quat.create();
+    quat.multiply(orbitQuat, yawQuat, pitchQuat);
+
+    // Set orientation in transform
+    this.transform.setOrientation(orbitQuat);
+
+    // Calculate offset from center (keep radius constant)
+    const direction = vec3.create();
+    vec3.subtract(direction, this.transform.translation, CoR);
+    const radius = vec3.length(direction);
+
+    // Start from a fixed offset (e.g., [0, 0, radius])
+    const initialOffset = vec3.fromValues(0, 0, radius);
+
+    // Rotate offset by orientation quaternion
+    const rotatedOffset = vec3.create();
+    vec3.transformQuat(rotatedOffset, initialOffset, orbitQuat);
+
+    // Update camera position
+    vec3.add(this.transform.translation, CoR, rotatedOffset);
+
+    this.transform.updateMatrix();
+  }
+  // ...existing code...
 
   getViewMatrix() {
     const mat4 = glMatrix.mat4;
@@ -59,7 +106,7 @@ export class Camera {
   updateProjectionMatrix() {
     const gl = this.gl;
     const mat4 = glMatrix.mat4;
-    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+    const aspect = this.viewportWidth / this.viewportHeight;
     const near = 0.1;
     const far = 1000.0;
 

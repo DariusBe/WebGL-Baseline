@@ -1,14 +1,23 @@
+.gui * {
+  /* prevent selection */
+  user-select: none;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
 * {
   --topbar-height: 40px;
-  --ui-bg-color: rgba(15, 15, 15, 0.65);
+  --ui-bg-color: rgba(15, 15, 15, 0.75);
   --ui-separator-color: rgba(100, 100, 100, 1);
-  --ui-text-color: white;
+  --ui-text-color-0: white;
+  --ui-text-color-1: rgb(200, 200, 200);
+  --ui-text-color-2: rgb(150, 150, 150);
   --ui-highlight-color: #005295bf;
-  --ui-padding: 10px;
+  --ui-padding: 25px;
   --ui-border-radius: 8px;
   --ui-button-border-radius: 5px;
   --ui-container-shadow: 0px 0px 10px rgb(0, 0, 0, 0.2);
-  --ui-container-blur: 10px;
+  --ui-container-blur: 25px;
 }
 
 .topbar {
@@ -29,7 +38,7 @@
 .topbar,
 .menu_popup {
   button {
-    color: var(--ui-text-color);
+    color: var(--ui-text-color-0);
     background-color: transparent;
     box-shadow: none;
     text-shadow: none;
@@ -96,7 +105,6 @@
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  padding: var(--ui-padding);
   border-radius: 0px 0px var(--ui-border-radius) 0px;
   z-index: 1;
 }
@@ -122,14 +130,15 @@
   text-shadow: none;
   border: none;
 }
+
+/* 
 .icon svg > {
-  width: 25px;
-  /* change used colors */
+  width: 50px;
   fill: brown;
   stroke: brown;
-  /* add other properties as needed */
   stroke-width: 2px;
-}
+} 
+*/
 
 .separator {
   position: fixed;
@@ -160,3 +169,57 @@
   animation: fadeOut 2500ms ease-in-out;
   background-color: var(--ui-highlight-color);
 }
+
+.about_popup {
+  position: fixed;
+  top: calc(var(--topbar-height) + 15px);
+  right: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  color: var(--ui-text-color-0);
+  background-color: var(--ui-bg-color);
+  border-radius: var(--ui-border-radius);
+  padding: var(--ui-padding);
+  cursor: default;
+  backdrop-filter: blur(var(--ui-container-blur));
+
+  /* animation when appearing */
+  -webkit-transition: all 0.5s ease-in-out;
+  -moz-transition: all 0.5s ease-in-out;
+  transition: all 0.5s ease-in-out;
+  animation: all 250ms ease-out;
+
+  box-shadow: var(--ui-container-shadow);
+  z-index: 10;
+}
+.about_popup h1 {
+  font-size: 1em;
+  margin: 0px;
+}
+.about_popup p {
+  width: auto;
+  max-width: 35vb;
+  font-size: 0.8em;
+  color: var(--ui-text-color-1);
+  white-space: pre-line; /* respect newlines in text */
+}
+.about_popup .about_close {
+  position: fixed;
+  top: 9px;
+  right: 9px;
+  width: 18px;
+}
+
+/*
+  --topbar-height: 40px;
+  --ui-bg-color: rgba(15, 15, 15, 0.65);
+  --ui-separator-color: rgba(100, 100, 100, 1);
+  --ui-text-color: white;
+  --ui-highlight-color: #005295bf;
+  --ui-padding: 10px;
+  --ui-border-radius: 8px;
+  --ui-button-border-radius: 5px;
+  --ui-container-shadow: 0px 0px 10px rgb(0, 0, 0, 0.2);
+  --ui-container-blur: 10px;
+  */

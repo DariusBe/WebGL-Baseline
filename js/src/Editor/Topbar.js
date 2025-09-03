@@ -179,7 +179,7 @@ export class Topbar extends EventTarget {
       [
         "About",
         new ContextButton(() => {
-          console.log("// ADD FUNCTIONALITY FOR ABOUT HERE");
+          this.dispatchEvent(new CustomEvent("help_about", { detail: {} }));
         }, true),
       ],
     ]);

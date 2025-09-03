@@ -12,6 +12,7 @@ export class Transform {
     this.rotation = rotate; // Euler angles in radians
     this.scale = scale; // [x, y, z]
     this.matrix = glMatrix.mat4.create();
+    this.orientation = glMatrix.quat.create();
     this.updateMatrix();
   }
 
@@ -24,14 +25,20 @@ export class Transform {
   updateMatrix() {
     const mat4 = glMatrix.mat4;
     const translationMatrix = mat4.create();
-    // Set the translation matrix to the current translation
     mat4.translate(translationMatrix, translationMatrix, this.translation);
+
     const rotationMatrix = mat4.create();
-    mat4.rotateX(rotationMatrix, rotationMatrix, this.rotation[0]);
-    mat4.rotateY(rotationMatrix, rotationMatrix, this.rotation[1]);
-    mat4.rotateZ(rotationMatrix, rotationMatrix, this.rotation[2]);
+    if (this.orientation) {
+      mat4.fromQuat(rotationMatrix, this.orientation);
+    } else {
+      mat4.rotateX(rotationMatrix, rotationMatrix, this.rotation[0]);
+      mat4.rotateY(rotationMatrix, rotationMatrix, this.rotation[1]);
+      mat4.rotateZ(rotationMatrix, rotationMatrix, this.rotation[2]);
+    }
+
     const scaleMatrix = mat4.create();
     mat4.scale(scaleMatrix, scaleMatrix, this.scale);
+
     mat4.multiply(this.matrix, translationMatrix, rotationMatrix);
     mat4.multiply(this.matrix, this.matrix, scaleMatrix);
   }
@@ -70,6 +77,21 @@ export class Transform {
     this.rotation[0] += x;
     this.rotation[1] += y;
     this.rotation[2] += z;
+    this.updateMatrix();
+  }
+
+  rotateX(angle) {
+    this.rotation[0] += angle;
+    this.updateMatrix();
+  }
+
+  rotateY(angle) {
+    this.rotation[1] += angle;
+    this.updateMatrix();
+  }
+
+  rotateZ(angle) {
+    this.rotation[2] += angle;
     this.updateMatrix();
   }
 
@@ -138,6 +160,19 @@ export class Transform {
    */
   getScale() {
     return this.scale;
+  }
+
+  setOrientation(quaternion) {
+    this.orientation = glMatrix.quat.clone(quaternion);
+    this.updateMatrix();
+  }
+
+  rotateQuaternion(axis, angleRad) {
+    const quat = glMatrix.quat;
+    const rotQuat = quat.create();
+    quat.setAxisAngle(rotQuat, axis, angleRad);
+    quat.multiply(this.orientation, rotQuat, this.orientation);
+    this.updateMatrix();
   }
 
   /**

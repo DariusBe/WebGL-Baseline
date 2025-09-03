@@ -3,6 +3,7 @@ import { Camera } from "../Scene/Camera.js";
 import { RenderTarget } from "../GL/RenderTarget.js";
 import { Renderer } from "../Scene/Renderer.js";
 import { Texture } from "../Shading/Texture.js";
+import { Sidepanel } from "./Sidepanel.js";
 
 export class Viewport {
   constructor(width, height) {
@@ -10,11 +11,22 @@ export class Viewport {
     this.canvas = this.gl.canvas;
     this.width = width;
     this.height = height;
-    this.mainCamera = new Camera("mainCamera");
+    this.mainCamera = new Camera(
+      "mainCamera",
+      null,
+      null,
+      null,
+      45,
+      0.1,
+      1000,
+      width,
+      height
+    );
     this.mainCamera.transform.setTranslation(0, 1, -5); // Default position
-    this.mainCamera.fov = 8; // Default field of view
+    this.mainCamera.fov = 45; // Default field of view
+    this.mainCamera.aspect = width / height;
     this.renderTarget = new RenderTarget(width, height);
-    this.renderMode = "solid"; // or "wireframe", "x-ray"
+    this.renderMode = "solid"; // or "wireframe"
     this.showGizmos = true;
 
     this.solidPass = null;
@@ -32,6 +44,20 @@ export class Viewport {
       y0: 0,
       xMax: width,
       yMax: height,
+    };
+
+    this.sidepanel = new Sidepanel();
+    this.sidepanel.buttons["Solid"].onClick = () => {
+      this.renderMode = "solid";
+    };
+    this.sidepanel.buttons["Wireframe"].onClick = () => {
+      this.renderMode = "wireframe";
+    };
+    this.sidepanel.buttons["Shaded"].onClick = () => {
+      this.renderMode = "shaded";
+    };
+    this.sidepanel.buttons["Grid"].onClick = () => {
+      // this.scene.toggleGrid();
     };
   }
 
@@ -116,6 +142,10 @@ export class Viewport {
     this.createSolidPass();
     this.createWireframePass();
     this.createGizmoPass();
+
+    /* update camera viewport */
+    this.mainCamera.aspect = width / height;
+    this.mainCamera.updateProjectionMatrix();
   }
 
   render(scene, renderer) {

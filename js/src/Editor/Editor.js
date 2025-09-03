@@ -1,6 +1,8 @@
 import { GLContext } from "../GL/GLContext.js";
 import { Topbar } from "./Topbar.js";
 import { Sidepanel } from "./Sidepanel.js";
+import { AboutPopup } from "./AboutPopup.js";
+import { IconButton } from "./IconButton.js";
 
 import { Renderer } from "../Scene/Renderer.js";
 import { Scene } from "../Scene/Scene.js";
@@ -99,12 +101,13 @@ export class Editor {
 
     /* UI */
     this.topbar = new Topbar();
-    this.sidepanel = new Sidepanel();
+    // this.sidepanel = new Sidepanel();
+    this.aboutPopup = new AboutPopup();
     this.updateSeparator();
 
     /* Globals */
     this.scene = new Scene();
-    this.registerUndoableStep();
+    this.registerUndoRedoStep(); // @@TODO: Implement undo/redo functionality
     this.renderer = new Renderer();
 
     /* GUI Listeners */
@@ -119,6 +122,7 @@ export class Editor {
     // this.gl.canvas.height = canvasHeight;
   }
 
+  /* RENDERING */
   render = () => {
     this.glContext.updateUniforms();
     for (const view of this.viewports) {
@@ -126,10 +130,10 @@ export class Editor {
 
       view.render(this.scene, this.renderer);
 
-      this.renderer.renderScreenQuad([
-        view.solidPass.targetTexture,
-        view.wireframePass.targetTexture,
-      ]);
+      this.renderer.renderScreenQuad(
+        [view.solidPass.targetTexture, view.wireframePass.targetTexture],
+        view.viewportArea
+      );
     }
     requestAnimationFrame(this.render);
   };
@@ -146,29 +150,51 @@ export class Editor {
       let separator = new Separator(viewportOffset_left);
       this.separators.push(separator);
 
+      const viewportRight = this.viewports[i];
       separator.element.addEventListener("separator-move", (e) => {
         const offset = e.detail.offset;
-        this.viewports[i].viewportArea.x0 = offset;
-        this.viewports[i].viewportArea.xMax = this.canvas.width - offset;
-
-        this.viewports[i].drawDebuggingOutlines();
+        viewportRight.viewportArea.x0 = offset;
+        viewportRight.viewportArea.xMax = this.canvas.width - offset;
+        viewportRight.drawDebuggingOutlines();
       });
 
       separator.element.addEventListener("separator-stop", (e) => {
         const offset = e.detail.offset;
 
-        this.viewports[i].resize(
+        viewportRight.resize(
           this.canvas.width - separator.width - offset,
           this.canvas.height,
           offset + separator.width,
           0
         );
-        this.viewports[i].removeDebuggingOutlines();
+        viewportRight.removeDebuggingOutlines();
       });
     }
   };
 
+  /* LISTENERS */
   prepareListeners = () => {
+    // register scroll in viewport (camera orbit)
+    this.canvas.addEventListener("mousemove", (e) => {
+      if (e.altKey && e.buttons & 1) {
+        // left mouse button held
+        this.canvas.style.cursor = "move";
+        e.preventDefault();
+
+        const deltaX = e.movementX;
+        const deltaY = e.movementY;
+
+        this.viewports[0].mainCamera.orbitAround(
+          deltaX,
+          deltaY,
+          glMatrix.vec3.fromValues(0, 0, 0)
+        );
+      } else {
+        this.canvas.style.cursor = "crosshair";
+      }
+    });
+
+    /* File Menu */
     this.topbar.addEventListener("file_new", (e) => {
       console.log("Editor received new file event");
       console.log(e.detail);
@@ -238,9 +264,13 @@ export class Editor {
       this.separators.forEach((separator) => separator.remove());
       this.separators = [];
     });
+
+    this.topbar.addEventListener("help_about", (e) => {
+      this.aboutPopup.setVisible(true);
+    });
   };
 
-  registerUndoableStep = () => {
+  registerUndoRedoStep = () => {
     this.sceneHistory.push(JSON.stringify(this.scene));
   };
 }

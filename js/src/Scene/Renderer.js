@@ -103,6 +103,8 @@ export class Renderer {
     //   console.warn(x.name);
     // }
 
+    const { x0, y0, xMax, yMax } = view;
+    gl.viewport(x0, y0, xMax, yMax);
     // Bind target and set viewport
     if (target instanceof RenderTarget) {
       target.bind();
@@ -110,8 +112,6 @@ export class Renderer {
     } else {
       gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
     }
-    const { x0, y0, xMax, yMax } = view;
-    gl.viewport(x0, y0, xMax, yMax);
 
     // Set up state based on mode
     this.depthTest ? gl.enable(gl.DEPTH_TEST) : gl.disable(gl.DEPTH_TEST);
@@ -299,7 +299,7 @@ export class Renderer {
     }
   }
 
-  renderScreenQuad(textures) {
+  renderScreenQuad(textures, view = null) {
     const gl = this.gl;
 
     gl.disable(gl.BLEND);

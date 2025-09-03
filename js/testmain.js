@@ -1,4 +1,4 @@
-import { Editor } from "./src/GUI/Editor.js";
+import { Editor } from "./src/Editor/Editor.js";
 import { SceneObject } from "./src/Scene/SceneObject.js";
 import { Texture } from "./src/Shading/Texture.js";
 import { Utils } from "./src/Utils/Utils.js";
@@ -11,7 +11,7 @@ const mars = await SceneObject.createFromOBJ(
   "resources/models/planet.obj",
   "resources/models/planet.mtl"
 );
-mars.transform.setScale(0.1, 0.1, 0.1);
+mars.transform.setScale(1.0, 1.0, 1.0);
 const marsTex = new Texture(
   "MarsTexture",
   await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),

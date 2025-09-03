@@ -5,7 +5,7 @@ import { Camera } from "./Camera.js";
 export class Scene {
   constructor() {
     this.root = new SceneObject(); // Root node
-    this.root.pickingColor = [-1.0, -1.0, -1.0, -1.0]; // Default picking color
+    this.root.pickingColor = [-1.0, -1.0, -1.0, -1.0]; // Default picking color for root
     this.root.name = "(root)";
     // this.camera = new Camera(); // Or camera component on a SceneObject
     this.scenegraph = new Map();
