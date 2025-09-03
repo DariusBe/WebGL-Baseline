@@ -21,7 +21,7 @@ class Separator extends EventTarget {
 
     // Add class for styling
     this.element.classList.add("separator");
-    this.setPosition(offset || 200, 0); // Default position if none provided
+    this.setOffset(offset || 200, 0); // Default position if none provided
     document.body.appendChild(this.element);
     this.width = this.element.offsetWidth;
 
@@ -52,7 +52,7 @@ class Separator extends EventTarget {
       const onMouseMove = (e) => {
         if (!dragging) return;
         const newX = Math.max(0, e.clientX); // Clamp to left edge
-        this.setPosition(newX);
+        this.setOffset(newX);
         this.element.dispatchEvent(
           new CustomEvent("separator-move", { detail: { offset: newX } })
         );
@@ -75,7 +75,7 @@ class Separator extends EventTarget {
     });
   }
 
-  setPosition = (offset) => {
+  setOffset = (offset) => {
     this.element.style.left = `${offset}px`;
   };
 
@@ -151,22 +151,32 @@ export class Editor {
       this.separators.push(separator);
 
       const viewportRight = this.viewports[i];
+      const viewportLeft = this.viewports[i - 1];
       separator.element.addEventListener("separator-move", (e) => {
         const offset = e.detail.offset;
+
+        // set viewport left of separator to new size
+        viewportLeft.viewportArea.xMax = offset;
+        viewportLeft.drawViewportDebugMask();
+
+        // set viewport right of separator to new size
         viewportRight.viewportArea.x0 = offset;
         viewportRight.viewportArea.xMax = this.canvas.width - offset;
-        viewportRight.drawDebuggingOutlines();
+        viewportRight.drawViewportDebugMask();
+        viewportRight.sidepanel.setOffset(offset + separator.width);
       });
 
       separator.element.addEventListener("separator-stop", (e) => {
         const offset = e.detail.offset;
 
+        viewportLeft.resize(offset, this.canvas.height, 0, 0);
         viewportRight.resize(
           this.canvas.width - separator.width - offset,
           this.canvas.height,
           offset + separator.width,
           0
         );
+        viewportLeft.removeDebuggingOutlines();
         viewportRight.removeDebuggingOutlines();
       });
     }
@@ -249,7 +259,10 @@ export class Editor {
 
     this.topbar.addEventListener("window_split", (e) => {
       const count = this.viewports.length;
-      if (count >= 2) return; // max 4 viewports for now
+      if (count >= 2) {
+        console.warn("Maximum number of viewports reached");
+        return;
+      }
       const viewport3D_2 = new Viewport(this.canvas.width, this.canvas.height);
       this.viewports.push(viewport3D_2);
       this.updateSeparator();
@@ -258,11 +271,19 @@ export class Editor {
     this.topbar.addEventListener("window_collapse", (e) => {
       const count = this.viewports.length;
       if (count <= 1) return; // at least one viewport
+      // remove the last viewport
+      const viewportToRemove = this.viewports[this.viewports.length - 1];
+      viewportToRemove.destroy();
+
+      // remove from viewports array
       this.viewports.pop();
       this.updateSeparator();
       // remove all separators
       this.separators.forEach((separator) => separator.remove());
       this.separators = [];
+
+      // resize viewport[0]
+      this.viewports[0].resize(this.canvas.width, this.canvas.height);
     });
 
     this.topbar.addEventListener("help_about", (e) => {

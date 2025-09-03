@@ -45,8 +45,17 @@ export class Viewport {
       xMax: width,
       yMax: height,
     };
+    this.draggingMask = document.createElement("div");
+    this.draggingMask.id = "viewport-dragging-mask";
+    this.draggingMask.style.position = "absolute";
+    this.draggingMask.style.pointerEvents = "none"; // allow clicks to pass through
 
     this.sidepanel = new Sidepanel();
+
+    this.prepareListeners();
+  }
+
+  prepareListeners() {
     this.sidepanel.buttons["Solid"].onClick = () => {
       this.renderMode = "solid";
     };
@@ -143,9 +152,15 @@ export class Viewport {
     this.createWireframePass();
     this.createGizmoPass();
 
+    // adjust sidepanel offset
+    this.sidepanel.setOffset(offset_x);
+
     /* update camera viewport */
     this.mainCamera.aspect = width / height;
     this.mainCamera.updateProjectionMatrix();
+
+    // remove drawViewportDebugMask
+    this.removeDebuggingOutlines();
   }
 
   render(scene, renderer) {
@@ -158,33 +173,33 @@ export class Viewport {
       this.viewportArea
     );
   }
-  drawDebuggingOutlines() {
-    // Remove existing outlines
-    const existingOutlines = document.querySelectorAll(
-      ".viewport-dragging-overlay"
-    );
+
+  drawViewportDebugMask(color = "rgba(38, 147, 255, 0.26)") {
     const topbar = document.getElementsByClassName("topbar");
     const topbar_height = topbar[0] ? topbar[0].offsetHeight : 0;
-    existingOutlines.forEach((outline) => outline.remove());
 
-    // Draw a solid fill for the viewport in a div on top of canvas
-    const margin = 0;
-    const fillDiv = document.createElement("div");
-    fillDiv.classList.add("viewport-dragging-overlay");
-    fillDiv.style.position = "absolute";
-    fillDiv.style.pointerEvents = "none"; // allow clicks to pass through
+    // if fillMask is already appended to canvas, don't append
+    if (!this.draggingMask.parentNode) {
+      document.body.appendChild(this.draggingMask);
+    }
+    this.draggingMask.style.position = "absolute";
+    this.draggingMask.style.pointerEvents = "none"; // allow clicks to pass through
+    this.draggingMask.style.backgroundColor = color;
     // background blur
-    fillDiv.style.left = `${this.viewportArea.x0}px`;
-    fillDiv.style.top = `${this.viewportArea.y0 + topbar_height}px`;
-    fillDiv.style.width = `${this.viewportArea.xMax}px`;
-    fillDiv.style.height = `${this.viewportArea.yMax - topbar_height}px`;
-    document.body.appendChild(fillDiv);
+    this.draggingMask.style.left = `${this.viewportArea.x0}px`;
+    this.draggingMask.style.top = `${this.viewportArea.y0 + topbar_height}px`;
+    this.draggingMask.style.width = `${this.viewportArea.xMax}px`;
+    this.draggingMask.style.height = `${
+      this.viewportArea.yMax - topbar_height
+    }px`;
   }
   removeDebuggingOutlines() {
-    const existingOutlines = document.querySelectorAll(
-      ".viewport-dragging-overlay"
-    );
-    existingOutlines.forEach((outline) => outline.remove());
+    this.draggingMask.remove();
+  }
+
+  destroy() {
+    this.removeDebuggingOutlines();
+    this.sidepanel.destroy();
   }
 }
 /**

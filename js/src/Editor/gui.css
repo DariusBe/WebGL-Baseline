@@ -165,11 +165,6 @@
   animation: fadeOut 250ms ease-out;
 }
 
-.viewport-dragging-overlay {
-  animation: fadeOut 2500ms ease-in-out;
-  background-color: var(--ui-highlight-color);
-}
-
 .about_popup {
   position: fixed;
   top: calc(var(--topbar-height) + 15px);

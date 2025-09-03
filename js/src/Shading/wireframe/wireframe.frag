@@ -33,6 +33,10 @@ mat4 scaleBy(mat4 m, float x, float y, float z) {
     return m;
 }
 
+vec3 getCameraPosition() {
+    return vec3(uView[3]);
+}
+
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 pickingID;
 
@@ -44,7 +48,7 @@ float edgeFactor(float minWidth, float maxWidth) {
     return 1.0 - smoothstep(0.0, edge, minBary);
 }
 
-vec4 wireframe(vec4 color, float width) {
+vec4 createWireframe(vec4 color, float width) {
     float minWidth = width; // Minimum allowed width (in pixels)
     float maxWidth = 0.5; // Maximum allowed width (in pixels)
     float alpha = edgeFactor(minWidth, maxWidth);
@@ -63,11 +67,12 @@ void main() {
 
     vec4 color = vec4(0.0, 0.0, 0.0, 1.0);
     vec4 col = BLACK;
-    float lineWidth = 0.01;
+    vec3 camPos = getCameraPosition();
+    float lineWidth = 0.01 * length(camPos);
     if (uSelected) {
         col = ORANGE;
         lineWidth = 0.095;
     }
-    fragColor = wireframe(col, lineWidth);
+    fragColor = createWireframe(col, lineWidth);
     pickingID = uPickingColor;
 }
