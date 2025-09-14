@@ -1,21 +1,22 @@
-import { GLContext } from "../GL/GLContext.js";
-import { Scene } from "./Scene.js";
-import { SceneObject } from "./SceneObject.js";
-import { Camera } from "./Camera.js";
+import { GLContext } from "../../GL/GLContext.js";
+import { Scene } from "../../Scene/Scene.js";
+import { SceneObject } from "../../Scene/SceneObject.js";
+import { Camera } from "../../Scene/Camera.js";
 // import { Viewport } from "../../Viewport.js";
-import { Texture } from "../Shading/Texture.js";
-import "../../../gl-matrix-min.js";
-import { Uniform } from "../GL/Uniform.js";
-import { Geometry } from "../Geom/Geometry.js";
-import { Attribute } from "../GL/Attribute.js";
-import { RenderTarget } from "../GL/RenderTarget.js";
-import { UUID } from "../Utils/UUID.js";
-import { Utils } from "../Utils/Utils.js";
-import { Material } from "../Shading/Material.js";
-import { ShaderProgram } from "../GL/ShaderProgram.js";
-import { Lamp } from "./Lamp.js";
-import { Grid } from "./SceneExtras.js";
-import { Bezier } from "./SceneExtras.js";
+import { Texture } from "../../Shading/Texture.js";
+import "../../../../gl-matrix-min.js";
+import { Uniform } from "../../GL/Uniform.js";
+import { Geometry } from "../../Geom/Geometry.js";
+import { Attribute } from "../../GL/Attribute.js";
+import { RenderTarget } from "../../GL/RenderTarget.js";
+import { UUID } from "../../Utils/UUID.js";
+import { Utils } from "../../Utils/Utils.js";
+import { Material } from "../../Shading/Material.js";
+import { ShaderProgram } from "../../GL/ShaderProgram.js";
+import { Lamp } from "../../Scene/Lamp.js";
+import { Grid } from "../../Scene/SceneExtras.js";
+import { Bezier } from "../../Scene/SceneExtras.js";
+import { RenderMode } from "./RenderPass.js";
 
 const screenPlane = await SceneObject.createFromOBJ(
   "resources/models/plane.obj",
@@ -52,7 +53,7 @@ export class Renderer {
     this.primitiveType = "TRIANGLES";
     this.primitiveCount = null;
     this.instanced = false;
-    this.clearColor = [0.3, 0.3, 0.3, 1.0];
+    this.clearColor = [0.25, 0.25, 0.25, 1.0];
     this.clear = ["COLOR_BUFFER_BIT", "DEPTH_BUFFER_BIT"];
     this.depthTest = true;
     this.cullFace = true;
@@ -94,14 +95,10 @@ export class Renderer {
     scene,
     camera,
     target = null,
-    mode = "solid",
+    mode = RenderMode.SOLID,
     view = this.standardView
   ) {
     const gl = this.gl;
-
-    // for (const x of scene.getHierarchyList()) {
-    //   console.warn(x.name);
-    // }
 
     const { x0, y0, xMax, yMax } = view;
     gl.viewport(x0, y0, xMax, yMax);
@@ -120,17 +117,25 @@ export class Renderer {
 
     // --- Mode-specific state ---
     switch (mode) {
-      case "solid":
-      case "wireframe":
+      case RenderMode.SOLID:
+      case RenderMode.WIREFRAME:
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         gl.blendEquation(gl.FUNC_ADD);
+        gl.enable(gl.DEPTH_TEST);
         break;
-      case "gizmo":
-      case "gizmos":
+      case RenderMode.POINT:
+        // Point mode means we render point primitive
         gl.disable(gl.BLEND);
         gl.disable(gl.CULL_FACE);
-        gl.disable(gl.DEPTH_TEST);
+        gl.enable(gl.DEPTH_TEST);
+        break;
+      case RenderMode.GIZMOS:
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.blendEquation(gl.FUNC_ADD);
+        gl.disable(gl.CULL_FACE);
+        gl.enable(gl.DEPTH_TEST);
         break;
       default:
         gl.disable(gl.BLEND);
@@ -141,15 +146,16 @@ export class Renderer {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // For solid/wireframe, disable blending after clear (for opaque geometry)
-    if (mode === "solid" || mode === "wireframe") {
+    if (mode === RenderMode.SOLID || mode === RenderMode.WIREFRAME) {
       gl.disable(gl.BLEND);
     }
 
     // Only render relevant objects for each mode
     switch (mode) {
-      case "gizmo":
-      case "gizmos":
-        for (const [objName, obj] of Object.entries(scene.getHierarchyList())) {
+      case RenderMode.GIZMOS:
+        // console.error("Rendering", Object.entries(scene.getHierarchyList()));
+        for (const [objName, obj] of scene.getHierarchyList()) {
+          // console.error("Rendering gizmo:", obj.name, obj);
           if (
             obj.constructor.name === "Gizmo" ||
             obj.constructor.name === "Lamp" ||
@@ -181,7 +187,7 @@ export class Renderer {
     gl.bindVertexArray(null);
   }
 
-  _renderNode(object, camera, parentTransform, mode = "solid") {
+  _renderNode(object, camera, parentTransform, mode = RenderMode.SOLID) {
     const gl = this.gl;
     const transform = glMatrix.mat4.multiply(
       glMatrix.mat4.create(),
@@ -194,7 +200,7 @@ export class Renderer {
 
       // --- Skip SceneExtras in solid/wireframe passes ---
       if (
-        (mode === "solid" || mode === "wireframe") &&
+        (mode === RenderMode.SOLID || mode === RenderMode.WIREFRAME) &&
         (object.constructor.name === "Gizmo" ||
           object.constructor.name === "Lamp" ||
           object.constructor.name === "Grid")
@@ -216,12 +222,14 @@ export class Renderer {
       // --- Use a local variable for the material ---
       let material;
       if (
-        mode === "wireframe" &&
+        mode === RenderMode.WIREFRAME &&
         object.constructor.name !== "Grid" &&
         object.constructor.name !== "Lamp"
       ) {
         if (!object.wireframeMaterial) object.createWireframeShader();
         material = object.wireframeMaterial;
+      } else if (mode === RenderMode.POINT && object.pointMaterial) {
+        material = object.pointMaterial;
       } else {
         material = object.solidMaterial || object.activeMaterial;
       }
@@ -261,12 +269,27 @@ export class Renderer {
             );
             break;
 
-          default: // Default to triangles
-            gl.drawArrays(
-              gl[this.primitiveType],
-              0,
-              this.primitiveCount || object.geometry.faces.length * 3
-            );
+          case "SceneObject":
+            if (mode === RenderMode.POINT) {
+              // gl.drawArrays(
+              //   gl[this.primitiveType],
+              //   0,
+              //   this.primitiveCount || object.geometry.faces.length * 3
+              // );
+              gl.drawArrays(
+                gl["points"],
+                0,
+                this.primitiveCount || object.geometry.faces.length * 3
+              );
+              break;
+            } else {
+              gl.drawArrays(
+                gl[this.primitiveType],
+                0,
+                this.primitiveCount || object.geometry.faces.length * 3
+              );
+              break;
+            }
         }
 
         // if (object instanceof Lamp || object instanceof Grid) {
@@ -294,12 +317,12 @@ export class Renderer {
     }
     // Recurse into children
     for (const [_, child] of object.children || []) {
-      // console.log("current", child.name, child.transform);
+      // console.error("current", child.name, child.transform);
       if (child) this._renderNode(child, camera, transform, mode);
     }
   }
 
-  renderScreenQuad(textures, view = null) {
+  renderScreenQuad(textures, view = null, verbose = false) {
     const gl = this.gl;
 
     gl.disable(gl.BLEND);
@@ -321,6 +344,8 @@ export class Renderer {
       if (texture instanceof Texture) {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, texture.webGLTexture);
+      } else {
+        console.warn(`Texture at index ${i} is not a valid Texture instance.`);
       }
     }
 
@@ -329,9 +354,27 @@ export class Renderer {
     const loc0 = gl.getUniformLocation(program, "uSampler0");
     const loc1 = gl.getUniformLocation(program, "uSampler1");
     const loc2 = gl.getUniformLocation(program, "uSampler2");
-    if (loc0 !== null) gl.uniform1i(loc0, 0);
-    if (loc1 !== null) gl.uniform1i(loc1, 1);
-    if (loc2 !== null) gl.uniform1i(loc2, 2);
+    const loc3 = gl.getUniformLocation(program, "uSampler3");
+    if (loc0 !== null && verbose) {
+      gl.uniform1i(loc0, 0);
+    } else if (verbose) {
+      console.warn("uSampler0 uniform not found in canvas shader.");
+    }
+    if (loc1 !== null) {
+      gl.uniform1i(loc1, 1);
+    } else if (verbose) {
+      console.warn("uSampler1 uniform not found in canvas shader.");
+    }
+    if (loc2 !== null) {
+      gl.uniform1i(loc2, 2);
+    } else if (verbose) {
+      console.warn("uSampler2 uniform not found in canvas shader.");
+    }
+    if (loc3 !== null) {
+      gl.uniform1i(loc3, 3);
+    } else if (verbose) {
+      console.warn("uSampler3 uniform not found in canvas shader.");
+    }
 
     this.screenVAO.bind();
     gl.drawArrays(gl.TRIANGLE_FAN, 0, 6);

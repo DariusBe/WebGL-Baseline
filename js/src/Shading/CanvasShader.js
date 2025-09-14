@@ -1,9 +1,9 @@
-import { GLContext } from "../../GL/GLContext.js";
-import { LegacyShader } from "../LegacyShader.js";
-import { Utils } from "../../Utils/Utils.js";
-import { ModelOBJ } from "../../Geom/ModelOBJ.js";
-import { ShaderProgram } from "../../GL/ShaderProgram.js";
-import "../../../../gl-matrix-min.js";
+import { GLContext } from "../GL/GLContext.js";
+import { LegacyShader } from "./LegacyShader.js";
+import { Utils } from "../Utils/Utils.js";
+import { ModelOBJ } from "../Geom/ModelOBJ.js";
+import { ShaderProgram } from "../GL/ShaderProgram.js";
+import "../../../gl-matrix-min.js";
 const glsl = (x) => x;
 
 var vertCode = glsl`#version 300 es

@@ -22,7 +22,18 @@ export class Sidepanel extends EventTarget {
   }
 
   prepareButtons() {
-    const buttonTitles = ["Solid", "Wireframe", "Shaded", "Grid"];
+    const buttonTitles = ["Solid", "Shaded", "Grid"];
+    const icons = [
+      "resources/img/icon_solid.svg",
+      "resources/img/icon_wireframe.svg",
+      "resources/img/icon_shaded.svg",
+      "resources/img/icon_grid.svg",
+    ];
+    icons.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+
     buttonTitles.forEach((title) => {
       const button = document.createElement("icon-button");
       button.setAttribute(

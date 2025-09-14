@@ -24,12 +24,19 @@ out vec3 vPosition;
 out vec2 vTexCoord;
 out vec3 vNormal;
 out vec3 vColor;
+out vec2 vScreenPos;
 
 void main() {
-    vPosition = aPosition;
+    gl_PointSize = 1.0;
     vTexCoord = aTexCoord;
     vNormal = aNormal;
     vColor = aColor;
+    vPosition = aPosition;
 
-    gl_Position = uProjection * uView * uModel * vec4(vPosition, 1.0);
+    vec4 clipSpace = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    vec3 ndc = clipSpace.xyz / clipSpace.w; // normalized device coordinates
+    // Convert NDC [-1,1] to screen coordinates
+    vScreenPos = ((ndc.xy + 1.0) * 0.5) * uResolution;
+
+    gl_Position = clipSpace;
 }

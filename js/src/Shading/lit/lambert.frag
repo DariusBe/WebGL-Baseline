@@ -4,6 +4,7 @@ precision highp float;
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
+#define BLUE vec4(0.0, 0.0, 1.0, 1.0)
 #define ORANGE vec4(1.0, 0.5, 0.0, 1.0)
 #define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
 #define PI 3.14159265359
@@ -12,6 +13,7 @@ in vec3 vPosition;
 in vec2 vTexCoord;
 in vec3 vNormal;
 in vec3 vColor;
+in vec2 vScreenPos;
 
 uniform sampler2D uSampler;
 uniform mat4 uModel;
@@ -26,6 +28,28 @@ layout(std140) uniform GlobalUniforms {
     float uTime;
     float uShowCursor;
     vec4 uMouse;
+};
+// uniform binding index = 1, buffer for multiple lights
+/*
+    uLightPosition  [X][X][X][X] (4 lights max)
+                    [X][X][X][X]
+                    [X][X][X][X]
+                    [X][X][X][X]
+    uLightColor     [X][X][X][X] (4 lights max)
+                    [X][X][X][X]
+                    [X][X][X][X]
+                    [X][X][X][X]
+    uLightIntensity [X][X][X][X] (4 lights max)
+                    [X][X][X][X]
+                    [X][X][X][X]
+                    [X][X][X][X]
+    uNumLights      [X][X][X][X] (actual number of lights)
+*/
+layout(std140) uniform LightUniforms {
+    vec4 uLightPosition[4];
+    vec4 uLightColor[4];
+    float uLightIntensity[4];
+    int uNumLights;
 };
 
 layout(location = 0) out vec4 fragColor;
@@ -102,7 +126,10 @@ void main() {
     //     fragColor = lambert;
     // } else {
 
-    fragColor = vec4(textureColor.rgb, 1.0);
+    fragColor = textureColor;
+
+    // fragColor = BLACK;
+
     // fragColor.a = 1.0;
     pickingID = uPickingColor;
 

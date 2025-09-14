@@ -169,11 +169,6 @@ export class Topbar extends EventTarget {
             "https://github.com/DariusBe/WebGL-Baseline/blob/main/docs/documentation.md",
             "_blank"
           );
-          this.dispatchEvent(
-            new CustomEvent("window_split", {
-              detail: { url: "https://github.com/your-repo" },
-            })
-          );
         }, true),
       ],
       [
