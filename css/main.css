@@ -1,5 +1,6 @@
 * {
   overscroll-behavior-x: none;
+  cursor: crosshair;
 }
 
 body {
