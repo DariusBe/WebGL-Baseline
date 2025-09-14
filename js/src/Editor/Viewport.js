@@ -1,13 +1,18 @@
 import { GLContext } from "../GL/GLContext.js";
 import { Camera } from "../Scene/Camera.js";
 import { RenderTarget } from "../GL/RenderTarget.js";
-import { Renderer } from "../Scene/Renderer.js";
+import { Renderer } from "./Rendering/Renderer.js";
 import { Texture } from "../Shading/Texture.js";
-import { Sidepanel } from "./Sidepanel.js";
+import { Sidepanel } from "./GUI/Sidepanel.js";
+import { Scene } from "../Scene/Scene.js";
+import { RenderMode } from "./Rendering/RenderPass.js";
+import { RenderPass } from "./Rendering/RenderPass.js";
+import { RenderPipeline } from "./Rendering/RenderPipeline.js";
 
 export class Viewport {
-  constructor(width, height) {
+  constructor(width, height, scene) {
     this.gl = GLContext.getInstance().gl;
+    this.scene = scene;
     this.canvas = this.gl.canvas;
     this.width = width;
     this.height = height;
@@ -22,22 +27,48 @@ export class Viewport {
       width,
       height
     );
+
     this.mainCamera.transform.setTranslation(0, 1, -5); // Default position
     this.mainCamera.fov = 45; // Default field of view
     this.mainCamera.aspect = width / height;
     this.renderTarget = new RenderTarget(width, height);
-    this.renderMode = "solid"; // or "wireframe"
+    this.renderMode = RenderMode.SOLID; // or "wireframe"
     this.showGizmos = true;
 
-    this.solidPass = null;
-    this.wireframePass = null;
-    this.gizmoPass = null;
-
-    this.passes = new Map();
-
-    this.createSolidPass();
-    this.createWireframePass();
-    this.createGizmoPass();
+    (this.solidPass = new RenderPass(
+      RenderMode.SOLID,
+      width,
+      height,
+      true,
+      true
+    )), // main solid pass with MSAA and picking
+      (this.vertexPointsPass = new RenderPass(
+        RenderMode.POINT,
+        width,
+        height,
+        true,
+        true
+      )), // display vertex points on top of solid
+      (this.wireframePass = new RenderPass(
+        RenderMode.WIREFRAME,
+        width,
+        height,
+        true,
+        true
+      )), // wireframe pass with MSAA and picking
+      (this.gizmoPass = new RenderPass(
+        RenderMode.GIZMOS,
+        width,
+        height,
+        true,
+        true
+      )), // gizmo pass with MSAA and picking
+      (this.passes = [
+        this.solidPass,
+        this.wireframePass,
+        this.gizmoPass,
+        this.vertexPointsPass,
+      ]);
 
     this.viewportArea = {
       x0: 0,
@@ -48,94 +79,128 @@ export class Viewport {
     this.draggingMask = document.createElement("div");
     this.draggingMask.id = "viewport-dragging-mask";
     this.draggingMask.style.position = "absolute";
-    this.draggingMask.style.pointerEvents = "none"; // allow clicks to pass through
+    // allow clicks to pass through
+    this.draggingMask.style.pointerEvents = "none";
 
     this.sidepanel = new Sidepanel();
 
     this.prepareListeners();
   }
 
-  prepareListeners() {
-    this.sidepanel.buttons["Solid"].onClick = () => {
-      this.renderMode = "solid";
-    };
-    this.sidepanel.buttons["Wireframe"].onClick = () => {
-      this.renderMode = "wireframe";
-    };
-    this.sidepanel.buttons["Shaded"].onClick = () => {
-      this.renderMode = "shaded";
-    };
-    this.sidepanel.buttons["Grid"].onClick = () => {
-      // this.scene.toggleGrid();
-    };
-  }
+  pickObjects = (x, y) => {
+    // for (const obj of scene.getHierarchyList()) {
+    //   console.log("Object picking UUIDs:", obj.name + ":", obj.pickingColor);
+    // }
+    // solidPass.msaaFBOCopyOver(); // Ensure MSAA data is copied over
+    const pickedColor = this.solidPass.readPickingAt(x, y);
+    // console.log("Picked color:", pickedColor);
 
-  createSolidPass() {
-    this.solidPass = new RenderTarget(
-      this.width,
-      this.height,
-      "SolidFBO",
-      new Texture(
-        "SolidFBOTexture",
-        null,
-        this.width,
-        this.height,
-        "RGBA16F",
-        "LINEAR",
-        "RGBA",
-        "FLOAT",
-        "CLAMP_TO_EDGE"
-      ),
-      true,
-      true
-    );
-    this.passes.set("solid", this.solidPass);
-  }
+    const threshold = 0.001; // precision threshold for color comparison
+    for (const obj of scene.getHierarchyList(true)) {
+      if (
+        // float-safe color comparison
+        Math.abs(obj.pickingColor[0] - pickedColor[0]) < threshold &&
+        Math.abs(obj.pickingColor[1] - pickedColor[1]) < threshold &&
+        Math.abs(obj.pickingColor[2] - pickedColor[2]) < threshold &&
+        Math.abs(obj.pickingColor[3] - pickedColor[3]) < threshold
+      ) {
+        // If a match is found, toggle selection and update uniforms
+        console.log("Picked object:", obj.name);
+        obj.toggleSelected();
+        obj.updateTransformUniforms();
+        return; // Exit after picking the first matching object
+      }
+    }
+  };
 
-  createWireframePass() {
-    // Try changing the wireframe render target texture format from RGBA16F to RGBA8
-    this.wireframePass = new RenderTarget(
-      this.width,
-      this.height,
-      "WireframeFBO",
-      new Texture(
-        "WireframeFBOTexture",
-        null,
-        this.width,
-        this.height,
-        "RGBA16F", // Changed from RGBA8
-        "LINEAR",
-        "RGBA",
-        "FLOAT", // Changed from UNSIGNED_BYTE
-        "CLAMP_TO_EDGE"
-      ),
-      true,
-      true
-    );
-    this.passes.set("wireframe", this.wireframePass);
-  }
+  // createSolidPass() {
+  //   this.solidPass = new RenderTarget(
+  //     this.width,
+  //     this.height,
+  //     "SolidFBO",
+  //     new Texture(
+  //       "SolidFBOTexture",
+  //       null,
+  //       this.width,
+  //       this.height,
+  //       "RGBA16F",
+  //       "LINEAR",
+  //       "RGBA",
+  //       "FLOAT",
+  //       "CLAMP_TO_EDGE"
+  //     ),
+  //     true,
+  //     true
+  //   );
+  //   this.passes.set("solid", this.solidPass);
+  // }
 
-  createGizmoPass() {
-    this.gizmoPass = new RenderTarget(
-      this.width,
-      this.height,
-      "GizmoFBO",
-      new Texture(
-        "GizmoFBOTexture",
-        null,
-        this.width,
-        this.height,
-        "RGBA16F",
-        "LINEAR",
-        "RGBA",
-        "FLOAT",
-        "CLAMP_TO_EDGE"
-      ),
-      true,
-      false
-    );
-    this.passes.set("gizmo", this.gizmoPass);
-  }
+  // createWireframePass() {
+  //   // Try changing the wireframe render target texture format from RGBA16F to RGBA8
+  //   this.wireframePass = new RenderTarget(
+  //     this.width,
+  //     this.height,
+  //     "WireframeFBO",
+  //     new Texture(
+  //       "WireframeFBOTexture",
+  //       null,
+  //       this.width,
+  //       this.height,
+  //       "RGBA16F", // Changed from RGBA8
+  //       "LINEAR",
+  //       "RGBA",
+  //       "FLOAT", // Changed from UNSIGNED_BYTE
+  //       "CLAMP_TO_EDGE"
+  //     ),
+  //     true,
+  //     true
+  //   );
+  //   this.passes.set("wireframe", this.wireframePass);
+  // }
+
+  // createVertexPointsPass() {
+  //   this.vertexPointsPass = new RenderTarget(
+  //     this.width,
+  //     this.height,
+  //     "VertexPointsFBO",
+  //     new Texture(
+  //       "VertexPointsFBOTexture",
+  //       null,
+  //       this.width,
+  //       this.height,
+  //       "RGBA16F",
+  //       "LINEAR",
+  //       "RGBA",
+  //       "FLOAT",
+  //       "CLAMP_TO_EDGE"
+  //     ),
+  //     true,
+  //     true
+  //   );
+  //   this.passes.set("vertexPoints", this.vertexPointsPass);
+  // }
+
+  // createGizmoPass() {
+  //   this.gizmoPass = new RenderTarget(
+  //     this.width,
+  //     this.height,
+  //     "GizmoFBO",
+  //     new Texture(
+  //       "GizmoFBOTexture",
+  //       null,
+  //       this.width,
+  //       this.height,
+  //       "RGBA16F",
+  //       "LINEAR",
+  //       "RGBA",
+  //       "FLOAT",
+  //       "CLAMP_TO_EDGE"
+  //     ),
+  //     true,
+  //     false
+  //   );
+  //   this.passes.set("gizmo", this.gizmoPass);
+  // }
 
   resize(width, height, offset_x, offset_y) {
     this.width = width;
@@ -151,6 +216,7 @@ export class Viewport {
     this.createSolidPass();
     this.createWireframePass();
     this.createGizmoPass();
+    // this.createVertexPointsPass();
 
     // adjust sidepanel offset
     this.sidepanel.setOffset(offset_x);
@@ -162,16 +228,9 @@ export class Viewport {
     // remove drawViewportDebugMask
     this.removeDebuggingOutlines();
   }
-
-  render(scene, renderer) {
-    // console.log(scene.getHierarchyList());
-    renderer.render(
-      scene,
-      this.mainCamera,
-      this.wireframePass,
-      this.renderMode,
-      this.viewportArea
-    );
+  setAspect(aspect) {
+    this.mainCamera.aspect = aspect;
+    this.mainCamera.updateProjectionMatrix();
   }
 
   drawViewportDebugMask(color = "rgba(38, 147, 255, 0.26)") {
@@ -195,6 +254,66 @@ export class Viewport {
   }
   removeDebuggingOutlines() {
     this.draggingMask.remove();
+  }
+
+  render(renderer, mode = this.renderMode) {
+    // const pipeline = new RenderPipeline();
+
+    // console.error(this.scene.getHierarchyList());
+    renderer.render(
+      this.scene,
+      this.mainCamera,
+      this.solidPass.target,
+      RenderMode.SOLID,
+      this.viewportArea
+    );
+    renderer.render(
+      this.scene,
+      this.mainCamera,
+      this.wireframePass.target,
+      RenderMode.WIREFRAME,
+      this.viewportArea
+    );
+    renderer.render(
+      this.scene,
+      this.mainCamera,
+      this.gizmoPass.target,
+      RenderMode.GIZMOS,
+      this.viewportArea
+    );
+    // renderer.render(
+    //   this.scene,
+    //   this.mainCamera,
+    //   this.vertexPointsPass.target,
+    //   RenderMode.POINT,
+    //   this.viewportArea
+    // );
+  }
+
+  prepareListeners() {
+    this.sidepanel.buttons["Solid"].onClick = () => {
+      if (this.renderMode == RenderMode.SOLID) {
+        this.renderMode = RenderMode.WIREFRAME;
+        this.sidepanel.buttons["Solid"].setAttribute("title", "Wireframe");
+        this.sidepanel.buttons["Solid"].setAttribute(
+          "icon",
+          `resources/img/icon_wireframe.svg`
+        );
+      } else {
+        this.renderMode = RenderMode.SOLID;
+        this.sidepanel.buttons["Solid"].setAttribute("title", "Solid");
+        this.sidepanel.buttons["Solid"].setAttribute(
+          "icon",
+          `resources/img/icon_solid.svg`
+        );
+      }
+    };
+    this.sidepanel.buttons["Shaded"].onClick = () => {
+      this.renderMode = RenderMode.SHADED;
+    };
+    this.sidepanel.buttons["Grid"].onClick = () => {
+      // this.scene.toggleGrid();
+    };
   }
 
   destroy() {

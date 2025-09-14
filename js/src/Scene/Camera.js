@@ -1,5 +1,5 @@
 import { GLContext } from "../GL/GLContext.js";
-import { Transform } from "./Transform.js";
+import { Transform } from "../Geom/Transform.js";
 import { UUID } from "../Utils/UUID.js";
 import "../../../gl-matrix-min.js";
 
@@ -28,30 +28,128 @@ export class Camera {
     this.aspectRatio = this.viewportWidth / this.viewportHeight;
     this.near = near;
     this.far = far;
+    // For orbit controls
+    this.pitch = 0; // think "airplane rising nose"
+    this.yaw = 0; // think "airplane turning left/right"
+    // roll would be "airplane doing barrel roll"
 
     // UUID handling
     const _uuid = UUID.generate();
     this.getUUID = () => {
       return _uuid;
     };
+
+    this.orientation = {
+      top: [0, 1, 0],
+      bottom: [0, -1, 0],
+      left: [-1, 0, 0],
+      right: [1, 0, 0],
+      front: [0, 0, -1],
+      back: [0, 0, 1],
+    };
   }
 
-  // ...existing code...
+  setAspect(aspect) {
+    this.aspectRatio = aspect;
+    this.updateProjectionMatrix();
+  }
+
+  zoom(delta, sensitivity = 0.1) {
+    const vec3 = glMatrix.vec3;
+    const direction = vec3.create();
+    vec3.subtract(direction, this.target, this.transform.getTranslation());
+    vec3.normalize(direction, direction);
+
+    const zoomAmount = delta * sensitivity;
+    const newPosition = vec3.create();
+    // Move the camera along its viewing direction
+    vec3.scaleAndAdd(
+      newPosition,
+      this.transform.getTranslation(),
+      direction,
+      zoomAmount
+    );
+
+    // apply the new position
+    this.transform.setTranslation(
+      newPosition[0],
+      newPosition[1],
+      newPosition[2]
+    );
+    // Update the transform matrix
+    this.transform.updateMatrix();
+  }
+
+  orbitTo(orientation, CoR, distance = 5) {
+    this.orbitAround(0, 0, CoR); // Reset any previous orbiting offsets
+
+    const vec3 = glMatrix.vec3;
+    const quat = glMatrix.quat;
+    const toRadian = (deg) => (deg * Math.PI) / 180;
+
+    let targetDirection;
+    switch (orientation) {
+      case "top":
+        targetDirection = this.orientation.top;
+        break;
+      case "bottom":
+        targetDirection = this.orientation.bottom;
+        break;
+      case "left":
+        targetDirection = this.orientation.left;
+        break;
+      case "right":
+        targetDirection = this.orientation.right;
+        break;
+      case "front":
+        targetDirection = this.orientation.front;
+        break;
+      case "back":
+        targetDirection = this.orientation.back;
+        break;
+      default:
+        console.warn(`Unknown orientation: ${orientation}`);
+        return;
+    }
+
+    // Calculate the new camera position
+    const newPosition = vec3.create();
+    vec3.scaleAndAdd(newPosition, CoR, targetDirection, distance);
+    this.transform.setTranslation(
+      newPosition[0],
+      newPosition[1],
+      newPosition[2]
+    );
+
+    // Calculate the orientation quaternion to look at the center of rotation
+    const lookAtMatrix = glMatrix.mat4.create();
+    glMatrix.mat4.targetTo(lookAtMatrix, newPosition, CoR, this.up);
+    const orientationQuat = glMatrix.quat.create();
+    glMatrix.mat4.getRotation(orientationQuat, lookAtMatrix);
+    this.transform.setOrientation(orientationQuat);
+
+    this.transform.updateMatrix();
+  }
+
   orbitAround(deltaX, deltaY, CoR, sensitivity = 0.5) {
     const vec3 = glMatrix.vec3;
     const quat = glMatrix.quat;
     const toRadian = (deg) => (deg * Math.PI) / 180;
 
     // Store yaw/pitch as properties for smooth orbit
-    this._yaw = (this._yaw || 0) - deltaX * sensitivity;
-    this._pitch = (this._pitch || 0) - deltaY * sensitivity;
+    this.yaw = (this.yaw || 180) - deltaX * sensitivity; // think "airplane turning left/right"
+    this.pitch = (this.pitch || 0) - deltaY * sensitivity; // think "airplane rising nose"
+
+    // Clamp pitch to avoid flipping
+    const maxPitch = 89.9;
+    this.pitch = Math.max(-maxPitch, Math.min(maxPitch, this.pitch));
 
     // Create yaw and pitch quaternions
     const yawQuat = quat.create();
-    quat.setAxisAngle(yawQuat, [0, 1, 0], toRadian(this._yaw));
+    quat.setAxisAngle(yawQuat, [0, 1, 0], toRadian(this.yaw));
 
     const pitchQuat = quat.create();
-    quat.setAxisAngle(pitchQuat, [1, 0, 0], toRadian(this._pitch));
+    quat.setAxisAngle(pitchQuat, [1, 0, 0], toRadian(this.pitch));
 
     // Combine yaw and pitch
     const orbitQuat = quat.create();
@@ -77,7 +175,6 @@ export class Camera {
 
     this.transform.updateMatrix();
   }
-  // ...existing code...
 
   getViewMatrix() {
     const mat4 = glMatrix.mat4;
