@@ -1,88 +1,40 @@
 import { GLContext } from "../GL/GLContext.js";
-import { Topbar } from "./Topbar.js";
-import { Sidepanel } from "./Sidepanel.js";
-import { AboutPopup } from "./AboutPopup.js";
-import { IconButton } from "./IconButton.js";
+import { Topbar } from "./GUI/Topbar.js";
+import { Sidepanel } from "./GUI/Sidepanel.js";
+import { AboutPopup } from "./GUI/AboutPopup.js";
+import { IconButton } from "./GUI/IconButton.js";
+import { Separator } from "./GUI/Separator.js";
 
-import { Renderer } from "../Scene/Renderer.js";
+import { Renderer } from "./Rendering/Renderer.js";
 import { Scene } from "../Scene/Scene.js";
 import { Viewport } from "./Viewport.js";
 import { SceneObject } from "../Scene/SceneObject.js";
 import { Material } from "../Shading/Material.js";
 import { Texture } from "../Shading/Texture.js";
 import { Utils } from "../Utils/Utils.js";
+import { Lamp } from "../Scene/Lamp.js";
+import { Grid } from "../Scene/SceneExtras.js";
+import { RenderMode } from "./Rendering/RenderPass.js";
+import { Camera } from "../Scene/Camera.js";
+import { Transform } from "../Geom/Transform.js";
+import { Gizmo } from "../Scene/SceneExtras.js";
 
-class Separator extends EventTarget {
-  constructor(offset) {
-    super();
-    this.element = document.createElement("div");
-    this.element.id = "separator";
-    this.dirty = false; // = needs redrawing
+const overtSphere = await SceneObject.createFromOBJ(
+  "resources/models/0vert.obj",
+  "resources/models/0vert.mtl"
+);
 
-    // Add class for styling
-    this.element.classList.add("separator");
-    this.setOffset(offset || 200, 0); // Default position if none provided
-    document.body.appendChild(this.element);
-    this.width = this.element.offsetWidth;
-
-    const stop = document.createElement("div");
-    stop.classList.add("separator-stop");
-    this.element.appendChild(stop);
-    this.element.appendChild(stop.cloneNode(true));
-    this.element.appendChild(stop.cloneNode(true));
-
-    // when dirty changes, dispatch an event
-    Object.defineProperty(this, "dirty", {
-      set(value) {
-        this._dirty = value;
-        this.element.dispatchEvent(new CustomEvent("dirty", { detail: value }));
-      },
-      get() {
-        return this._dirty;
-      },
-    });
-
-    let dragging = false;
-
-    this.element.addEventListener("mousedown", (e) => {
-      dragging = true;
-      document.body.style.cursor = "col-resize";
-      e.preventDefault();
-
-      const onMouseMove = (e) => {
-        if (!dragging) return;
-        const newX = Math.max(0, e.clientX); // Clamp to left edge
-        this.setOffset(newX);
-        this.element.dispatchEvent(
-          new CustomEvent("separator-move", { detail: { offset: newX } })
-        );
-      };
-
-      const onMouseUp = () => {
-        dragging = false;
-        document.body.style.cursor = "";
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", onMouseUp);
-        this.element.dispatchEvent(
-          new CustomEvent("separator-stop", {
-            detail: { offset: this.element.offsetLeft },
-          })
-        );
-      };
-
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
-    });
-  }
-
-  setOffset = (offset) => {
-    this.element.style.left = `${offset}px`;
-  };
-
-  remove = () => {
-    this.element.remove();
-  };
-}
+const testmap = new Texture(
+  "TestTexture",
+  await Utils.loadImage("resources/textures/oVertSphere_AO.png", 1024, 1024),
+  1024,
+  1024,
+  "RGBA16F",
+  "LINEAR",
+  "RGBA",
+  "FLOAT",
+  "CLAMP_TO_EDGE"
+);
 
 export class Editor {
   constructor() {
@@ -94,21 +46,39 @@ export class Editor {
     this.viewports = [];
     this.separators = [];
 
-    this.viewport3D_1 = new Viewport(this.canvas.width, this.canvas.height);
+    /* Globals */
+    this.scene = new Scene();
+    this.renderer = new Renderer();
+
+    /* Viewports */
+    this.viewport3D_1 = new Viewport(
+      this.canvas.width,
+      this.canvas.height,
+      this.scene
+    );
     this.viewports.push(this.viewport3D_1);
 
-    // this.viewport3D.setSize(200, 200);
+    /* Initial Objects */
+    overtSphere.transform.setScale(1.0, 1.0, 1.0);
+    const testMaterial = new Material("OvertMaterial", null, null, testmap);
+    overtSphere.addMaterial(testMaterial, true);
+    overtSphere.solidMaterial = testMaterial; // Set solid material
+    overtSphere.activeMaterial = testMaterial;
+    overtSphere.name = "OvertSphere";
+    this.scene.add(overtSphere);
 
-    /* UI */
+    const lamp = new Lamp("Sun", "lamp", 1.0);
+    lamp.transform.setTranslation(3.0, 2.5, -5.0);
+    this.scene.add(lamp);
+
+    const grid = new Grid("Grid", 500, 500);
+    this.scene.add(grid);
+
+    /* GUI */
     this.topbar = new Topbar();
     // this.sidepanel = new Sidepanel();
     this.aboutPopup = new AboutPopup();
     this.updateViewportsOnDrag();
-
-    /* Globals */
-    this.scene = new Scene();
-    this.registerUndoRedoStep(); // @@TODO: Implement undo/redo functionality
-    this.renderer = new Renderer();
 
     /* GUI Listeners */
     this.prepareListeners();
@@ -126,12 +96,19 @@ export class Editor {
   render = () => {
     this.glContext.updateUniforms();
     for (const view of this.viewports) {
-      // console.error(view.solidPass.targetTexture);
-
-      view.render(this.scene, this.renderer);
+      // render solid
+      view.render(this.renderer, RenderMode.GIZMOS);
+      view.render(this.renderer, RenderMode.WIREFRAME);
+      view.render(this.renderer, RenderMode.SOLID);
+      // view.render(this.renderer, RenderMode.POINT);
 
       this.renderer.renderScreenQuad(
-        [view.solidPass.targetTexture, view.wireframePass.targetTexture],
+        [
+          view.solidPass.texture,
+          view.wireframePass.texture,
+          view.gizmoPass.texture,
+          // view.vertexPointsPass.texture,
+        ],
         view.viewportArea
       );
     }
@@ -182,35 +159,65 @@ export class Editor {
     }
   };
 
+  getViewportAtMouse(x, y) {
+    if (this.viewports.length === 1) {
+      return this.viewports[0];
+    } else {
+      const leftVP = this.viewports[0];
+      const rightVP = this.viewports[1];
+      if (x < leftVP.viewportArea.xMax && y < leftVP.viewportArea.yMax) {
+        return leftVP;
+      } else if (x > rightVP.viewportArea.x0 && y < rightVP.viewportArea.yMax) {
+        return rightVP;
+      }
+    }
+    return null;
+  }
+
   /* LISTENERS */
   prepareListeners = () => {
-    // register scroll in viewport (camera orbit)
+    // register scroll in viewport (camera zoom)
+    this.canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const zoomSensitivity = 0.05;
+      const zoomAmount = e.deltaY * zoomSensitivity;
+      if (e.deltaY < 0) this.canvas.style.cursor = "zoom-out";
+      else this.canvas.style.cursor = "zoom-in";
+
+      const effectedViewport = this.getViewportAtMouse(e.clientX, e.clientY);
+      if (effectedViewport) {
+        effectedViewport.mainCamera.zoom(zoomAmount);
+      }
+    });
+
+    // register mousemove in viewport (camera orbit)
     this.canvas.addEventListener("mousemove", (e) => {
+      const deltaX = e.movementX;
+      const deltaY = e.movementY;
+      this.canvas.style.cursor = "crosshair";
+
+      // if click, pick object of respective viewport
+      if (e.buttons & 1 && !e.altKey) {
+        const viewport = this.getViewportAtMouse(e.clientX, e.clientY);
+        if (viewport) {
+          viewport.pickObjects(e.clientX, e.clientY);
+        }
+      }
+
+      // if Alt Key + Left Mouse Button
       if (e.altKey && e.buttons & 1) {
         // left mouse button held
-        this.canvas.style.cursor = "move";
+        this.canvas.style.cursor = "all-scroll";
         e.preventDefault();
 
-        const deltaX = e.movementX;
-        const deltaY = e.movementY;
+        const effectedViewport = this.getViewportAtMouse(e.clientX, e.clientY);
 
-        if (this.viewports.length > 1) {
-          const viewportLeftArea = this.viewports[0].viewportArea;
-          const viewportRightArea = this.viewports[1].viewportArea;
-          // if cursor inside right viewport
-          if (e.clientX > viewportRightArea.x0) {
-            this.viewports[1].mainCamera.orbitAround(
-              deltaX,
-              deltaY,
-              glMatrix.vec3.fromValues(0, 0, 0)
-            );
-          } else {
-            this.viewports[0].mainCamera.orbitAround(
-              deltaX,
-              deltaY,
-              glMatrix.vec3.fromValues(0, 0, 0)
-            );
-          }
+        if (effectedViewport) {
+          effectedViewport.mainCamera.orbitAround(
+            deltaX,
+            deltaY,
+            glMatrix.vec3.fromValues(0, 0, 0)
+          );
         } else {
           this.viewports[0].mainCamera.orbitAround(
             deltaX,
@@ -235,6 +242,13 @@ export class Editor {
 
       if (confirmDelete) {
         this.scene = new Scene();
+
+        this.viewport3D_1.scene = this.scene;
+        this.viewport3D_1 = new Viewport(
+          this.canvas.width,
+          this.canvas.height,
+          this.scene
+        );
       }
     });
 
@@ -247,14 +261,18 @@ export class Editor {
         obj.then(async (instance) => {
           const res = instance;
           if (res.name) {
-            res.name = "ImportedObj";
+            res.name = obj.name;
           }
-          res.transform.setScale(0.05, 0.05, 0.05);
+          res.transform.setScale(1.0, 1.0, 1.0);
           const resTexture = new Texture(
             `${res.name}_Texture`,
-            await Utils.loadImage("resources/textures/Mars.jpg", 1440, 720),
-            1440,
-            720,
+            await Utils.loadImage(
+              "resources/textures/0vertUVMap.png",
+              2048,
+              2048
+            ),
+            2048,
+            2048,
             "RGBA16F",
             "LINEAR",
             "RGBA",
@@ -282,7 +300,11 @@ export class Editor {
         console.warn("Maximum number of viewports reached");
         return;
       }
-      const viewport3D_2 = new Viewport(this.canvas.width, this.canvas.height);
+      const viewport3D_2 = new Viewport(
+        this.canvas.width,
+        this.canvas.height,
+        this.scene
+      );
       this.viewports.push(viewport3D_2);
       this.updateViewportsOnDrag();
     });
