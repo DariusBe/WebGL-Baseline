@@ -1,4 +1,4 @@
-import { Transform } from "./Transform.js";
+import { Transform } from "../Geom/Transform.js";
 import { SceneObject } from "./SceneObject.js";
 import { Gizmo } from "./SceneExtras.js";
 import { Geometry } from "../Geom/Geometry.js";
@@ -13,7 +13,8 @@ export class Lamp extends SceneObject {
     this.gizmo = new Gizmo(name, "lamp", transform);
     this.activeMaterial = this.gizmo.activeMaterial;
     this.geometry = this.gizmo.geometry;
-    this.transform.setScale(0.05, 0.05, 0.05);
+    this.pointMaterial = null;
+    this.transform.setScale(0.25, 0.25, 0.25);
     this.geometry.name = name;
   }
 }

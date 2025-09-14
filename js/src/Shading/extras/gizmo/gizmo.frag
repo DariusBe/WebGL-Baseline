@@ -4,6 +4,7 @@ precision highp float;
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define GRAY vec4(0.5, 0.5, 0.5, 1.0)
+#define DARKGRAY vec4(0.15, 0.15, 0.15, 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
 #define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
 #define ORANGE vec4(1.0, 0.647, 0.0, 1.0)
@@ -29,8 +30,9 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 pickingID;
 
 void main() {
-    if (length(WHITE) < 0.1) // or some condition for background
-        discard;
-    fragColor = BLACK;
-    fragColor.a = 0.0;
+    // if (length(WHITE) < 0.5) // or some condition for background
+    //     fragColor = WHITE;
+    fragColor = DARKGRAY;
+
+    pickingID = uPickingColor;
 }

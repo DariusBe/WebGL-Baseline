@@ -2,7 +2,7 @@ import { SceneObject } from "./SceneObject.js";
 import { Geometry } from "../Geom/Geometry.js";
 import { Attribute } from "../GL/Attribute.js";
 import { Material } from "../Shading/Material.js";
-import { Transform } from "../Scene/Transform.js";
+import { Transform } from "../Geom/Transform.js";
 import { Utils } from "../Utils/Utils.js";
 import { Texture } from "../Shading/Texture.js";
 import { ShaderProgram } from "../GL/ShaderProgram.js";
@@ -51,6 +51,7 @@ export class Gizmo extends SceneObject {
       transform || new Transform()
     );
     this.kind = kind;
+    this.pointMaterial = null;
 
     this.geometry.name = name;
     this.geometry.primitiveCount = this.geometry.lineVertices.length / 3; // Each vertex has 3 components (x, y, z)
@@ -81,6 +82,7 @@ export class Grid extends SceneObject {
     this.geometry.lineVertices = this.gridBuilder();
     this.geometry.primitiveCount = this.geometry.lineVertices.length / 7; // Each vertex has 3 position components and 4 color components (XYZ RGBA)
     // console.log(this.geometry.lineVertices, this.geometry.primitiveCount);
+    this.pointMaterial = null;
 
     this.geometry.prepareAttributes([
       new Attribute(
@@ -112,15 +114,32 @@ export class Grid extends SceneObject {
     let combinedGeom = [];
     const halfSize = this.size / 2;
     const step = this.size / this.resolution;
-    const color = [0.0, 1.0, 0.0, 1.0]; // Green color for the grid lines
+    const color = [0.3, 0.3, 0.3, 1.0]; // gray color for the grid lines
+    const centerColorX = [0.43, 0.55, 0.22, 1.0]; // greenish
+    const centerColorZ = [0.57, 0.26, 0.3, 1.0]; // reddish
     for (let i = -halfSize; i <= halfSize; i += step) {
-      // Horizontal lines
-      combinedGeom.push(-halfSize, 0, i, ...color);
-      combinedGeom.push(halfSize, 0, i, ...color);
-
-      // Vertical lines
-      combinedGeom.push(i, 0, -halfSize, ...color);
-      combinedGeom.push(i, 0, halfSize, ...color);
+      // Lines parallel to Z-axis
+      combinedGeom.push(
+        i,
+        0,
+        -halfSize,
+        ...(i === 0 ? centerColorX : color),
+        i,
+        0,
+        halfSize,
+        ...(i === 0 ? centerColorX : color)
+      );
+      // Lines parallel to X-axis
+      combinedGeom.push(
+        -halfSize,
+        0,
+        i,
+        ...(i === 0 ? centerColorZ : color),
+        halfSize,
+        0,
+        i,
+        ...(i === 0 ? centerColorZ : color)
+      );
     }
 
     return combinedGeom;
@@ -133,6 +152,7 @@ export class Bezier extends SceneObject {
     this.geometry = new Geometry();
     this.geometry.lineVertices = [];
     this.geometry.primitiveCount = 0;
+    this.pointMaterial = null;
 
     this.resolution = 250; // Number of segments for the Bezier curve
     this.activeMaterial.setUniform(

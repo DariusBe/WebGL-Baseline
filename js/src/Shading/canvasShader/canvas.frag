@@ -1,6 +1,7 @@
 #version 300 es
 precision highp float;
 
+#define TRANSPARENT vec4(0.0, 0.0, 0.0, 0.0)
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define GRAY vec4(vec3(0.15), 1.0)
@@ -17,6 +18,7 @@ in vec3 vColor;
 uniform sampler2D uSampler0;
 uniform sampler2D uSampler1;
 uniform sampler2D uSampler2;
+uniform sampler2D uSampler3;
 
 uniform mat4 uModel;
 
@@ -48,15 +50,18 @@ vec4 prepareCursor(float radius, vec4 color) {
 }
 
 void main() {
-    vec4 solid = texture(uSampler0, vTexCoord); // solid pass
-    vec4 wireframe = texture(uSampler1, vTexCoord); // wireframe pass
-    vec4 gizmo = texture(uSampler2, vTexCoord); // gizmo pass
+    // Sample the textures
+    vec4 solid = texture(uSampler0, vTexCoord); // Solid pass
+    vec4 wireframe = texture(uSampler1, vTexCoord); // Wireframe pass
+    vec4 grid = texture(uSampler2, vTexCoord); // Grid pass
 
-    // fragColor = solid;
-    // // Show both with additive blend
-    vec4 solidWireframe = mix(solid, wireframe, wireframe.a);
-    fragColor = solidWireframe;
-    // fragColor.a = 1.0; // Ensure full opacity
-    // fragColor = mix(BLACK, fragColor, gizmo.a); // Add gizmo pass with some transparency
-    // fragColor = length(solid.rgb) < 0.01 ? vec4(vec3(0.0), 1.0) : fragColor; // discard if solid pass is too dark
+    // Start with the grid as the base layer
+    vec4 baseColor = grid;
+    // Blend the solid pass on top of the grid
+    baseColor = mix(baseColor, solid, 1.0 - wireframe.a);
+    // Add the wireframe pass on top of the solid pass
+    baseColor = mix(baseColor, wireframe, 1.0 - grid.a);
+
+    // Output the final color
+    fragColor = baseColor;
 }

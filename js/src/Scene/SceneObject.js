@@ -2,7 +2,7 @@ import { GLContext } from "../GL/GLContext.js";
 import { ShaderProgram } from "../GL/ShaderProgram.js";
 import { Material } from "../Shading/Material.js";
 import { Geometry } from "../Geom/Geometry.js";
-import { Transform } from "./Transform.js";
+import { Transform } from "../Geom/Transform.js";
 import { Uniform } from "../GL/Uniform.js";
 import { HalfEdgeMesh } from "../Geom/Primitives/HalfEdge.js";
 import { Utils } from "../Utils/Utils.js";
@@ -16,6 +16,13 @@ const wireFrameFragCode = await Utils.readShaderFile(
   "js/src/Shading/wireframe/wireframe.frag"
 );
 
+const pointVertCode = await Utils.readShaderFile(
+  "js/src/Shading/vertexPoints/vertexPoints.vert"
+);
+const pointFragCode = await Utils.readShaderFile(
+  "js/src/Shading/vertexPoints/vertexPoints.frag"
+);
+
 export class SceneObject {
   constructor(
     name = "newSceneObject",
@@ -25,13 +32,16 @@ export class SceneObject {
   ) {
     this.name = name;
     this.children = new Map();
+
     this.geometry = geometry || new Geometry();
+    this.transform = transform || new Transform();
+
     this.materials = new Map(material ? [[material.name, material]] : []);
     this.activeMaterial = material || null;
     this.solidMaterial = null;
     this.wireframeMaterial = null;
-    this.transform = transform || new Transform();
     this.selected = false; // Selection state
+    this.visible = true;
 
     // UUID handling
     const _uuid = UUID.generate();
@@ -66,6 +76,13 @@ export class SceneObject {
         new Uniform("uSelected", "bool", this.selected)
       );
     }
+    if (this.pointMaterial == null) {
+      this.createVertPointsShader();
+      this.pointMaterial.setUniform(
+        new Uniform("uPickingColor", "vec4", this.pickingColor),
+        new Uniform("uSelected", "bool", this.selected)
+      );
+    }
   }
 
   static createFromOBJ = async (
@@ -86,7 +103,7 @@ export class SceneObject {
     obj.geometry.combinedGeom = [];
 
     try {
-      await obj.geometry.parseOBJFile(objSrc, mtlSrc, true, isFile);
+      await obj.geometry.parseOBJFile(objSrc, mtlSrc, false, isFile);
     } catch (error) {
       console.error("Error parsing OBJ file:", error);
     }
@@ -172,6 +189,18 @@ export class SceneObject {
       new Uniform("uSelected", "bool", this.selected)
     );
     this.materials.set(this.wireframeMaterial.name, this.wireframeMaterial);
+  }
+
+  createVertPointsShader() {
+    this.pointMaterial = new Material(
+      "PointMaterial",
+      new ShaderProgram(pointVertCode, pointFragCode, "PointShaderProgram")
+    );
+    this.pointMaterial.setUniform(
+      new Uniform("uModel", "mat4", this.transform.getMatrix()),
+      new Uniform("uSelected", "bool", this.selected)
+    );
+    this.materials.set(this.pointMaterial.name, this.pointMaterial);
   }
 
   addChild(child) {

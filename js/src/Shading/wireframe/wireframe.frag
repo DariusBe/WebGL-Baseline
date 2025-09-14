@@ -69,10 +69,9 @@ void main() {
     vec4 col = BLACK;
     vec3 camPos = getCameraPosition();
     float lineWidth = 0.01 * length(camPos);
-    if (uSelected) {
-        col = ORANGE;
-        lineWidth = 0.095;
-    }
+    // if (uSelected) {
+    lineWidth = 0.025;
+    // }
     fragColor = createWireframe(col, lineWidth);
     pickingID = uPickingColor;
 }

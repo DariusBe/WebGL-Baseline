@@ -1,6 +1,7 @@
 #version 300 es
 precision highp float;
 
+#define TRANSPARENT vec4(0.0, 0.0, 0.0, 0.0)
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
@@ -25,8 +26,8 @@ out vec3 vPosition;
 out vec4 vColor;
 
 void main() {
-    vColor = WHITE;
     vPosition = aPosition;
-
     gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+
+    vColor = aColor;
 }

@@ -388,7 +388,9 @@ export class Utils {
     for (let i = 0; i < rows; i++) {
       str += "[ ";
       for (let j = 0; j < cols; j++) {
-        str += matrix[i * cols + j].toFixed(precision).padStart(maxLength, " ");
+        str += matrix[i * cols + j]
+          ?.toFixed(precision)
+          .padStart(maxLength, " ");
         if (j < cols - 1) {
           str += ", ";
         }

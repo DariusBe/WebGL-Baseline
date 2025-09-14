@@ -4,6 +4,7 @@ precision highp float;
 #define BLACK vec4(0.0, 0.0, 0.0, 1.0)
 #define WHITE vec4(1.0, 1.0, 1.0, 1.0)
 #define GRAY vec4(0.5, 0.5, 0.5, 1.0)
+#define TRANSPARENT vec4(0.0)
 #define RED vec4(1.0, 0.0, 0.0, 1.0)
 #define PURPLE vec4(0.5, 0.0, 0.5, 1.0)
 #define ORANGE vec4(1.0, 0.647, 0.0, 1.0)
@@ -26,16 +27,31 @@ layout(std140) uniform GlobalUniforms {
     vec4 uMouse;
 };
 
+vec3 getCameraPosition() {
+    return vec3(uView[3]);
+}
+
+// Simple linear interpolation function
+float lerp(float a, float b, float t) {
+    return a + t * (b - a);
+}
+
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 pickingID;
 
 void main() {
-    if (length(WHITE) < 0.1) // or some condition for background
-        discard;
+    // if (length(WHITE) < 0.1) // or some condition for background
+    //     discard;
 
-    float dist = distance(vec3(0.0), vPosition.xyz);
-    fragColor = BLACK;
-    fragColor.a = 0.5;
+    // vec3 camPos = getCameraPosition();
+    // float radius = 35.0;
+    // float dist = distance(vec2(camPos.x, camPos.z), vec2(vPosition.x, vPosition.z));
 
+    // if (dist > radius) {
+    //     discard; // Discard fragments outside the radius
+    // } else {
+    //     fragColor.a = 1.0;
+    // }
+    fragColor = vColor;
     pickingID = uPickingColor;
 }

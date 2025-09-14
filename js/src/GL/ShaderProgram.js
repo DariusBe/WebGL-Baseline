@@ -94,10 +94,10 @@ const glsl = (x) => x;
 // }`;
 
 const vertCode = await Utils.readShaderFile(
-  "./js/src/Shading/generic/generic.vert"
+  "./js/src/Shading/solid/solid.vert"
 );
 const fragCode = await Utils.readShaderFile(
-  "./js/src/Shading/generic/generic.frag"
+  "./js/src/Shading/solid/solid.frag"
 );
 
 export class ShaderProgram {
@@ -107,6 +107,7 @@ export class ShaderProgram {
     name = "newShaderProgram"
   ) {
     this.name = name;
+    this.program = null;
     this.init(vertexShaderSource, fragmentShaderSource);
     this.uniformData = new Map();
   }
@@ -129,7 +130,7 @@ export class ShaderProgram {
 
     if (vertexShaderCode === null || fragmentShaderCode === null) {
       console.info(
-        "Vertex or fragment shader code is null. Creating default (generic) shaders."
+        "Vertex or fragment shader code is null. Creating default (solid) shaders."
       );
       vertexShaderCode = vertCode;
       fragmentShaderCode = fragCode;

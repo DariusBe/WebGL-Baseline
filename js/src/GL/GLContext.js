@@ -1,5 +1,7 @@
 import { Utils } from "../Utils/Utils.js";
 import "../../../gl-matrix-min.js";
+import { UniformBuffer } from "./UniformBuffer.js";
+import { ShaderProgram } from "./ShaderProgram.js";
 
 /**
  * GLContext singleton class to manage WebGL2 context, shaders, and global uniforms
@@ -149,6 +151,10 @@ export class GLContext {
     this.canvas.addEventListener("mousemove", this.onmousemove);
     window.addEventListener("resize", this.onresize);
 
+    // const testBuffer = new UniformBuffer(1, "Camera", [
+    //   [1, 1, 1],
+    //   [1, 1, 1],
+    // ]);
     console.groupEnd();
   }
 
@@ -308,6 +314,12 @@ export class GLContext {
           maxVertexUniformVectors: gl.getParameter(
             gl.MAX_VERTEX_UNIFORM_VECTORS
           ),
+          // max UniformBufferBindings
+          maxUniformBufferBindings: gl.getParameter(
+            gl.MAX_UNIFORM_BUFFER_BINDINGS
+          ),
+          maxUniformBlockSize: gl.getParameter(gl.MAX_UNIFORM_BLOCK_SIZE),
+          maxVaryingVectors: gl.getParameter(gl.MAX_VARYING_VECTORS),
           maxFragmentUniformVectors: gl.getParameter(
             gl.MAX_FRAGMENT_UNIFORM_VECTORS
           ),
@@ -337,7 +349,7 @@ export class GLContext {
    * @param {boolean} verbose - whether to print the buffer layout to console
    */
   fillGlobalUniformBuffer = (verbose = false) => {
-    this.globalUniformData = new Float32Array(16 + 16 + 2 + 1 + 1 + 3 + 5); //
+    this.globalUniformData = new Float32Array(16 + 16 + 2 + 1 + 1 + 3 + 5);
     /** Buffer Layout:
      * populate buffer with data
      *  1) mat4 uProjection; == 4 * 4 == 16 elements in one chunk
@@ -358,6 +370,8 @@ export class GLContext {
      *    ...
      *  [3][3]-[4]-[5] // uResolution -> 32..33, uTime -> 34, uShowCursor -> 35
      *  [6][6][6]-[P] // uMouse -> 36..38, Padding to 40
+     * TODO: - add: bool uSelected; uFlipTexture; RGB color;
+     *
      */
     const offsets = [0, 16, 32, 34, 35, 36];
 
@@ -388,7 +402,7 @@ export class GLContext {
     this.globalUniformData.set(this.uTime, offsets[3]);
     this.globalUniformData.set(this.uShowCursor, offsets[4]);
     this.globalUniformData.set(this.uMouse, offsets[5]);
-    if (verbose) {
+    if (!verbose) {
       console.groupCollapsed(
         "Global Uniform Buffer, Length:",
         this.globalUniformData.length
@@ -508,7 +522,7 @@ export class GLContext {
 
   /**
    * Returns the location of the global uniform block in the shader
-   * @param {Shader} shader - the shader to get the global uniform block location from
+   * @param {ShaderProgram} shader - the shader to get the global uniform block location from
    * @returns {Object|null} - the block index, size, and binding point of the global uniform block, or null if not found
    */
   getGlobalUniformBlockLocation = (shader) => {
